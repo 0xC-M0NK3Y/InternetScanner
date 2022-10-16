@@ -1,0 +1,35 @@
+2**2 ports
+
+int [541, 26, 415, 84]
+
+215.32.45.123:2156
+4845484/10
+
+127672 9/10 = 
+
+127673-1 2
+[25862,52]
+a = ip^port^(key[<timestamp>/10%2])&32-1
+
+	0100110010011001001101001110001010100110001 & 0111111
+
+ack-syn
+
+1.1.1.2^80^1&31 127.0.0.1 -> 1.1.1.1     a = 10101011
+1.52.53.4^80^1&31  						 a = 10011100	
+
+1.1.1.2^80^1&31 1.1.1.1 -> 127.0.0.1			 a = 10101011 = 26
+1.52.53.4^80^1&31							     a = 10011100 != 5111
+
+												2564
+
+./scanner "unix:/tmp/scanner.sock;ipv4:0.0.0.0:6438"
+
+
+
+<IP(s)> <port(s)> <nombre de port à trouver (si 0 alors tu scans tout>
+# tu scannes toutes les IPs de 10.0.0.0/24,192.168.0.0/16 sur le port 8080 et 808{0,1,2,3,4,5}
+10.0.0.0/24,192.168.0.0/16 8000,8080-8085 0
+0.0.0.0/0 80 500      # tu cherches 500 ip avec le port 80 ouvert (IPv4)
+::/0 80 500           # tu cherches 500 ip avec le port 80 ouvert (IPv6)
+0.0.0.0/0,::/0 80 500 #  tu cherches 500 ip avec le port 80 ouvert (IPv4 et IPv6)
