@@ -1,0 +1,59 @@
+#ifndef STRUCTS_H
+# define STRUCTS_H
+
+#include <unistd.h>
+
+#include "defines.h"
+
+typedef struct analyse
+{
+    ipv4_t	listen_ipv4;
+    port_t	listen_portv4;
+    char	unix_path[108];
+}   analyse_t;
+
+typedef struct target_address {
+	union	{
+		ipv4_t	v4;
+		ipv6_t	v6;
+	} addr;
+	uint8_t	type;	/* v4/v6 */
+	uint8_t	CDIR;	/* .../x */
+}	target_address_t;
+
+typedef struct request {
+	target_address_t	*addresses;
+	size_t				addr_count;
+	size_t				scan_count; 	/* pour savoir à où on en est au niveau de la liste d'IP */
+	size_t				seek_count;		/* le nombre de résultat qu'on veut */
+	port_t				*seek_port;
+	size_t				port_count;
+
+	/* si on scan toutes les IPs, faut choisir un temps d'attente
+	 * pour recevoir les réponses des scans sur les dernières IPs
+	 * donc faut stocker le moment de l'envoie du dernier paquet pour ça
+	*/
+	time_t				finished_at;
+} request_t;
+
+typedef struct found_address {
+	uint8_t type;
+	union {
+		ipv4_t *v4;
+		ipv6_t *v6;
+	} addr;
+	size_t count;
+} found_address_t;
+
+typedef struct response {
+	uint8_t 		success;
+	found_address_t *found;
+} response_t;
+
+typedef struct communicator {
+	request_t *request;
+	uint8_t   *stop;
+	SOCKET	  client;
+} communicator_t;
+
+#endif
