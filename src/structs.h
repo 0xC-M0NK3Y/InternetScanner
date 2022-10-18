@@ -36,6 +36,7 @@ typedef struct request {
 	time_t				finished_at;
 } request_t;
 
+/*
 typedef struct found_address {
 	uint8_t type;
 	union {
@@ -49,7 +50,7 @@ typedef struct response {
 	uint8_t 		success;
 	found_address_t *found;
 } response_t;
-
+*/
 typedef struct communicator {
 	request_t *request;
 	uint8_t   *stop;

@@ -6,6 +6,8 @@
 
 #include <pthread.h>
 
+#include <fcntl.h>
+
 #include <sys/socket.h>
 #include <sys/un.h>
 
@@ -40,7 +42,7 @@ int main(int argc, char **argv)
     communicator_t bridge;
     pthread_t listen_thread;
     pthread_t scan_thread;
-    response_t *response;
+    char *response;
 
     if (argc != 2) {
         printf("Usage: %s <listen_format>\n", argv[0]);
@@ -106,11 +108,6 @@ int main(int argc, char **argv)
         printf("Listenning on unix socket, path %s\n", reader.unix_path);
     }
 
-    req = malloc(sizeof(request_t));
-    if (req == NULL)
-        return perror("malloc"), free(socks), 1;
-    
-    bridge.request = req;
     bridge.stop = malloc(1);
     if (bridge.stop == NULL)
         return perror("malloc"), free(socks), free(req), 1;
@@ -133,6 +130,7 @@ int main(int argc, char **argv)
                         pollfd[i].fd = client;
                         pollfd[i].events = POLLIN;
                         pollfd[i].revents = 0;
+                        fcntl(pollfd[i].fd, F_SETFL, fcntl(pollfd[i].fd, F_GETFL, 0) | O_NONBLOCK);
                         i++;
                     }
                     printf("Client connected from %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
@@ -144,27 +142,33 @@ int main(int argc, char **argv)
                     int r;
                     memset(msg, 0, 100);
 
-                    msg_len = read(pollfd[j].fd, msg, 100);
+                    msg_len = recv(pollfd[j].fd, msg, 100, 0);
                     if (msg_len == 0) {
-                        printf("cllient disconnected\n");
+                        printf("Client disconnected\n");
                         memmove(&pollfd[j], &pollfd[j+1], (i - j) * sizeof(POLLFD));
                         i--;
+                        continue;
                     }
-                    if ((r = parse_request(req, msg)) < 0) {
+                    printf("Received request len : %d\n", msg_len);
+                    req = malloc(sizeof(request_t));
+                    if (req == NULL)
+                        return perror("malloc"), free(socks), 1;
+                    bridge.request = req;
+                    if ((r = parse_request(req, msg)) < 0)
                         printf("Failed create request : %d\n", r);
-                    }
                     else {
                         bridge.client = pollfd[j].fd;
-                        //memset(response, 0, sizeof(response_t));
-                        //print_request(*req);
+                        bridge.stop[0] = 0;
                         pthread_create(&scan_thread, NULL, scanner, (void *)&bridge);
                         pthread_create(&listen_thread, NULL, listenner, (void *)&bridge);
                         pthread_join(listen_thread, (void **)&response);
+                        pthread_join(scan_thread, NULL);
+                        bridge.stop[0] = 1;
+                        free_request(req);
+                        printf("Request done\n");
                     }
                 }
             }
         }
-
     }
-
 }

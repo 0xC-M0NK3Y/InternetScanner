@@ -164,7 +164,7 @@ void print_request(request_t req) {
 		} else if (req.addresses[i].type == 6) {
 			printf("target addr = ");
 			for (size_t j = 0; j < 16; j++)
-				printf("%X:", req.addresses[i].addr.v6[j]);
+				printf("%X:", req.addresses[i].addr.v6.__in6_u.__u6_addr8[i]);
 			printf("\n");
 		}
 		printf("target mask = %d\n", req.addresses[i].CDIR);

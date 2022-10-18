@@ -11,11 +11,12 @@
 
 typedef int SOCKET;
 typedef struct sockaddr_in SOCKADDRV4;
+typedef struct sockaddr_in6 SOCKADDRV6;
+typedef struct sockaddr_in SOCKADDRIN;
 typedef uint32_t ipv4_t;
-typedef uint8_t  ipv6_t[16];
+typedef struct in6_addr ipv6_t;
 typedef uint16_t port_t;
 typedef struct sockaddr_un SOCKADDRUN;
-typedef struct sockaddr_in SOCKADDRIN;
 typedef struct pollfd POLLFD;
 
 #define POSSIBLE_PORTS_SIZE (1<<5)

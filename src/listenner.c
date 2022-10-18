@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <errno.h>
+
 #include <time.h>
 
 #include <sys/types.h>
@@ -35,6 +37,9 @@ void *listenner(void *bridge) {
     uint8_t infinite = 0;
     size_t port_count = req->port_count;
     port_t *ports = req->seek_port;
+    char *err_buffer = NULL;
+    int j = 0;
+    time_t end = 0;
 
     sock = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
     if (sock < 0) {
@@ -42,10 +47,11 @@ void *listenner(void *bridge) {
         return NULL;
     }
 
-    if (seek_count == 0)
+    if (seek_count == 0) {
         infinite = 1;
-
-    printf("Listenner thread start\n");
+        printf("Listenner thread start [Infinite]\n");
+    } else
+        printf("Listenner thread start [SeekCount]\n");
 
     while (found < seek_count || infinite)
     {
@@ -60,18 +66,36 @@ void *listenner(void *bridge) {
             tmp.s_addr = ip_hdr->saddr;
             for (size_t i = 0; i < port_count; i++) {
                 if (tcp_hdr->th_flags == (TH_SYN | TH_ACK) && (ntohs(tcp_hdr->th_dport) == ports_possible[GET_PORT(ip_hdr->saddr, ports[i], key[(time(NULL)/10)%2])])) {
-                    char *ret;
-                    //printf("Received SYN ACK from %s:%d to %d\n", inet_ntoa(tmp), ntohs(tcp_hdr->th_sport), ntohs(tcp_hdr->th_dport));
-                    ret = inet_ntoa(tmp);
-                    write(client, ret, strlen(ret));
-                    write(client, "\n", 1);
+                    char ret[23];
+                    int len;
+                    int t;
+                    memset(ret, 0, 23);
+                    snprintf(ret, 23, "%s:%d\n", inet_ntoa(tmp), ntohs(tcp_hdr->th_sport));
+                    len = strlen(ret);
+                    t = send(client, ret, len, 0);
+                    if ((t < 0) && (errno == EAGAIN)) {
+                        if (err_buffer == NULL)
+                            err_buffer = malloc(len + 1);
+                        else
+                            err_buffer = realloc(err_buffer, strlen(err_buffer) + len + 1);
+                        memcpy(&err_buffer[j], ret, strlen(ret));
+                        j += len;
+                        err_buffer[j] = 0;
+                        printf("In err_buffer\n");
+                    }
                     found++;
                 }
             }
         }
+        if (infinite && stop[0])
+            end = req->finished_at + 20;
+        if (stop[0] && time(NULL) >= end)
+            break;
     }
     stop[0] = 1;
     found = 0;
+
+    send(client, "end\n", 4, 0);
 
     close(sock);
 
