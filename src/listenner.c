@@ -126,7 +126,8 @@ void *listenner(void *data) {
                 ipv4_t ip = ip_hdr->saddr;
                 port_t port = tcp_hdr->th_dport;
                 
-                if (ntohs(port) == ports_possible[GET_PORT(ip, port, key[(time(NULL)/10-1)%2])]) {
+                if (ntohs(port) == ports_possible[GET_PORT(ip, tcp_hdr->th_sport, key[(time(NULL)/10)%2])]
+                 || ntohs(port) == ports_possible[GET_PORT(ip, tcp_hdr->th_sport, key[(time(NULL)/10-1)%2])]) {
                     pthread_mutex_lock(&reqlist->mutex);
                     // On tourne sur chaque requete courante, chaque port pour voir si ca correspond et trouver a quel client envoyer
                     uint8_t CDIR = get_biggest_cdir(reqlist, ip, tcp_hdr->th_sport);

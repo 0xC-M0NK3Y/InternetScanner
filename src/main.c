@@ -139,7 +139,7 @@ int main(int argc, char **argv)
                     j--;
                 }
             } else if (req->seek_count) {
-                if (req->scan_count == req->seek_count) {
+                if (req->scan_count >= req->seek_count) {
                     memmove(&reqlist->ptr[j], &reqlist->ptr[j + 1], (reqlist->len - j) * sizeof(communicator_t));
                     printf("request %ld ended\n", j+1);
                     reqlist->len--;
