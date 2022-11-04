@@ -18,11 +18,11 @@
 
 #include "listenner.h"
 
-#define DEBIT_OpS 1000
+#define DEBIT_OpS 1000000
 #define ONE_SECONDE 1000000
 
 static void send_to_ip_mask(SOCKET sock4, request_t *req, port_t *ports_possible, ipv4_t source_ip, SOCKADDRV4 dest_addr4, uint32_t *key, pthread_mutex_t *mutex) {
-    uint32_t index = req->addr_count - 1;
+    uint32_t index = req->curr_addr - 1;
 
     if (req->finished_at != 0)
         return;
@@ -46,10 +46,10 @@ static void send_to_ip_mask(SOCKET sock4, request_t *req, port_t *ports_possible
         pthread_mutex_lock(mutex);
         req->scan_count++;
         if (dest_ip == (first_ip | ~bit_mask)) {
-            req->addr_count--;
+            req->curr_addr--;
             req->scan_count = 0;
         }
-        if (req->addr_count == 0)
+        if (req->curr_addr == 0)
             req->finished_at = time(NULL);
     } else if (req->addresses[index].type == 6) {
 
@@ -136,7 +136,7 @@ static void send_to_ramdom_ip(SOCKET sock4, request_t *req, ipv4_t source_ip, po
 
 void *scanner(void *data) {
     reqlist_t *reqlist = (reqlist_t *)data;
-    ipv4_t source_ip4 = inet_addr("192.168.1.15");
+    ipv4_t source_ip4 = inet_addr("87.106.196.195");
     //ipv6_t source_ip6;
     uint32_t key[2] = {696969, 262626};
     SOCKET sock4;
@@ -144,11 +144,8 @@ void *scanner(void *data) {
     SOCKADDRV4 dest_addr4;
     //SOCKADDRV6 dest_addr6;
     int dummy = 1;
-    /*port_t ports_possible[POSSIBLE_PORTS_SIZE] = {1234, 1235, 1236, 1237, 1238, 1239, 2345, 2346, 
-                                                  2347, 2348, 3456, 3457, 3458, 3459, 4567, 4568, 
-                                                  4569, 5678, 5679, 1111, 1212, 1313, 1414, 1515,
-                                                  1616, 1717, 1818, 1919, 2222, 2323, 2424, 2525};*/
-	port_t ports_possible[POSSIBLE_PORTS_SIZE] = {6969};
+    port_t ports_possible[POSSIBLE_PORTS_SIZE] = {1234, 1235, 1236, 1237, 1238, 1239, 2345, 2346, 
+                                                  2347, 2348, 3456, 3457, 3458, 3459, 4567, 4568};
    // uint64_t wait_time = ONE_SECONDE / DEBIT_OpS / sizeof(packet_t);
 
     sock4 = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
@@ -198,7 +195,7 @@ void *scanner(void *data) {
             else
                 send_to_ramdom_ip(sock4, &(reqlist->ptr[i].request), source_ip4, ports_possible, key, dest_addr4, &(reqlist->mutex));
             pthread_mutex_unlock(&reqlist->mutex);
-            usleep(ONE_SECONDE/5);
+            usleep(ONE_SECONDE / 10000);
             pthread_mutex_lock(&reqlist->mutex);
         }
         pthread_mutex_unlock(&reqlist->mutex);

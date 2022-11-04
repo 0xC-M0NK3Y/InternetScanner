@@ -26,6 +26,7 @@ typedef struct target_address {
 
 typedef struct request {
 	target_address_t	*addresses;
+	size_t				curr_addr;
 	size_t				addr_count;
 	size_t				scan_count; 	/* pour savoir à où on en est au niveau de la liste d'IP */
 	size_t				seek_count;		/* le nombre de résultat qu'on veut */

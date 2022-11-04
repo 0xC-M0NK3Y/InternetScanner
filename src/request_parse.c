@@ -152,6 +152,8 @@ int	parse_request(request_t	*req, char *str) {
 		if ((r = create_ratio(req)) < 0)
 			return free(req->addresses), r;
 
+	req->curr_addr = req->addr_count;
+
 	return 0;
 }
 

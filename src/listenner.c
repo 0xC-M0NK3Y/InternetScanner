@@ -30,7 +30,8 @@ int not_in_blacklist(ipv4_t *blacklist, ipv4_t ip) {
 
 static uint8_t get_biggest_cdir(reqlist_t *reqlist, ipv4_t ip, port_t port) {
     uint8_t CDIR = 0;
-
+    
+    ip = ntohl(ip);
     for (size_t i = 0; i < reqlist->len; i++) {
         request_t *req = &(reqlist->ptr[i].request);
         for (size_t j = 0; j < req->port_count; j++) {
@@ -41,7 +42,6 @@ static uint8_t get_biggest_cdir(reqlist_t *reqlist, ipv4_t ip, port_t port) {
 
                     if (req->addresses[k].CDIR == 0)
                         bit_mask = 0;
-                    ip = ntohl(ip);
                     if (ip >= (first_ip & bit_mask) && ip <= (first_ip | ~bit_mask)) {
                         if (req->addresses[k].CDIR > CDIR)
                             CDIR = req->addresses[k].CDIR;
@@ -55,6 +55,7 @@ static uint8_t get_biggest_cdir(reqlist_t *reqlist, ipv4_t ip, port_t port) {
 
 
 static void send_to_correspondant_client(reqlist_t *reqlist, ipv4_t ip, port_t port, uint8_t CDIR) {
+    ip = ntohl(ip);
     for (size_t i = 0; i < reqlist->len; i++) {
         request_t *req = &(reqlist->ptr[i].request);
         for (size_t j = 0; j < req->port_count; j++) {
@@ -65,7 +66,6 @@ static void send_to_correspondant_client(reqlist_t *reqlist, ipv4_t ip, port_t p
 
                     if (req->addresses[k].CDIR == 0)
                         bit_mask = 0;
-                    ip = ntohl(ip);
                     if (ip >= (first_ip & bit_mask) && ip <= (first_ip | ~bit_mask)) {
                         if (req->addresses[k].CDIR == CDIR) {
                             struct in_addr tmp;
@@ -95,14 +95,15 @@ void *listenner(void *data) {
     uint8_t buffer[5000];
     IP_HEADER *ip_hdr;
     TCP_HEADER *tcp_hdr;
-    /*port_t ports_possible[POSSIBLE_PORTS_SIZE] = {1234, 1235, 1236, 1237, 1238, 1239, 2345, 2346, 
-                                         2347, 2348, 3456, 3457, 3458, 3459, 4567, 4568, 
-                                         4569, 5678, 5679, 1111, 1212, 1313, 1414, 1515,
-                                         1616, 1717, 1818, 1919, 2222, 2323, 2424, 2525};*/
-	port_t ports_possible[POSSIBLE_PORTS_SIZE] = {6969};
+    port_t ports_possible[POSSIBLE_PORTS_SIZE] = {1234, 1235, 1236, 1237, 1238, 1239, 2345, 2346, 
+                                                  2347, 2348, 3456, 3457, 3458, 3459, 4567, 4568};
+	//port_t ports_possible[POSSIBLE_PORTS_SIZE] = {6969};
     uint32_t key[2] = {696969, 262626};
     int r;
-    //ipv4_t blacklist[BLACKLIST_SIZE];
+    ipv4_t blacklist[BLACKLIST_SIZE];
+    int i = 0;
+
+    memset(blacklist, 0, BLACKLIST_SIZE * sizeof(ipv4_t));
 
     sock4 = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
     if (sock4 < 0) {
@@ -124,14 +125,17 @@ void *listenner(void *data) {
             tcp_hdr = (TCP_HEADER *)(buffer + ip_hdr->ihl * 4);
             if (tcp_hdr->th_flags == (TH_SYN | TH_ACK)) {
                 ipv4_t ip = ip_hdr->saddr;
-                port_t port = tcp_hdr->th_dport;
+                port_t port = ntohs(tcp_hdr->th_dport);
                 
-                if (ntohs(port) == ports_possible[GET_PORT(ip, tcp_hdr->th_sport, key[(time(NULL)/10)%2])]
-                 || ntohs(port) == ports_possible[GET_PORT(ip, tcp_hdr->th_sport, key[(time(NULL)/10-1)%2])]) {
+                if (not_in_blacklist(blacklist, ip) &&
+                   (port == ports_possible[GET_PORT(ip, tcp_hdr->th_sport, key[(time(NULL)/10)%2])]
+                 || port == ports_possible[GET_PORT(ip, tcp_hdr->th_sport, key[(time(NULL)/10-1)%2])])) {
                     pthread_mutex_lock(&reqlist->mutex);
                     // On tourne sur chaque requete courante, chaque port pour voir si ca correspond et trouver a quel client envoyer
                     uint8_t CDIR = get_biggest_cdir(reqlist, ip, tcp_hdr->th_sport);
                     send_to_correspondant_client(reqlist, ip, tcp_hdr->th_sport, CDIR);
+                    blacklist[i%BLACKLIST_SIZE] = ip;
+                    i++;
                     pthread_mutex_unlock(&reqlist->mutex);
                 }
             }

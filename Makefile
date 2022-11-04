@@ -1,6 +1,6 @@
 NAME = scanner
 CC = gcc
-CFLAGS = -Wall -Wextra -Werror -g
+CFLAGS = -Wall -Wextra -Werror -lpthread
 SRC = $(addprefix src/, main.c listenner.c packet.c utils.c request_parse.c scanner.c)
 OBJ = ${SRC:.c=.o}
 

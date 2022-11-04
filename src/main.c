@@ -125,7 +125,7 @@ int main(int argc, char **argv)
     while (1)
     {
         if (poll(pollfd, i, 1000) < 0)
-            return perror("poll"), free(socks), 1;
+            perror("poll");
         // ckeck ici chaque requete le status
         // TODO: si passer le cap realloc a la baisse
         pthread_mutex_lock(&reqlist->mutex);
@@ -133,6 +133,7 @@ int main(int argc, char **argv)
             request_t *req = &(reqlist->ptr[j].request);
             if (req->seek_count == 0) {
                 if (time(NULL) - req->finished_at >= TIMEOUT) {
+                    send(reqlist->ptr[j].client, "end\n", 5, 0);
                     memmove(&reqlist->ptr[j], &reqlist->ptr[j + 1], (reqlist->len - j) * sizeof(communicator_t));
                     printf("request %ld ended\n", j+1);
                     reqlist->len--;
@@ -140,6 +141,7 @@ int main(int argc, char **argv)
                 }
             } else if (req->seek_count) {
                 if (req->scan_count >= req->seek_count) {
+                    send(reqlist->ptr[j].client, "end\n", 5, 0);
                     memmove(&reqlist->ptr[j], &reqlist->ptr[j + 1], (reqlist->len - j) * sizeof(communicator_t));
                     printf("request %ld ended\n", j+1);
                     reqlist->len--;
@@ -182,7 +184,7 @@ int main(int argc, char **argv)
                         continue;
                     }
                     pthread_mutex_lock(&reqlist->mutex);
-                    if (reqlist->len == reqlist->cap) {
+                    if (reqlist->len >= reqlist->cap) {
                         send(pollfd[j].fd, "Y'a trop de requete la zin att un peu !\n", 41, 0);
                         continue;
                     }
