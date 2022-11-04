@@ -13,6 +13,7 @@ async def scan(queue):
 					html = await response.text()
 					if "Index of /" in html or "Directory listing for /" in html:
 						print(target.split(':')[0], end='')
+						print(" | ",target.split(":")[1], end='')
 						print(" | ",response.headers['server'])
 			except:
 				pass

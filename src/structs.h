@@ -54,6 +54,11 @@ typedef struct request_list {
 	size_t cap;
 }	reqlist_t;
 
+typedef struct blacklist {
+	ipv4_t ip;
+	port_t port;
+}	blacklist_t;
+
 /*
 typedef struct found_address {
 	uint8_t type;
