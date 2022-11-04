@@ -34,6 +34,8 @@ static uint8_t get_biggest_cdir(reqlist_t *reqlist, ipv4_t ip, port_t port) {
     ip = ntohl(ip);
     for (size_t i = 0; i < reqlist->len; i++) {
         request_t *req = &(reqlist->ptr[i].request);
+        if (req->seek_count && req->scan_count >= req->seek_count)
+            continue;
         for (size_t j = 0; j < req->port_count; j++) {
             if (port == req->seek_port[j]) {
                 for (size_t k = 0; k < req->addr_count; k++) {
@@ -58,6 +60,8 @@ static void send_to_correspondant_client(reqlist_t *reqlist, ipv4_t ip, port_t p
     ip = ntohl(ip);
     for (size_t i = 0; i < reqlist->len; i++) {
         request_t *req = &(reqlist->ptr[i].request);
+        if (req->seek_count && req->scan_count >= req->seek_count)
+            continue;
         for (size_t j = 0; j < req->port_count; j++) {
             if (port == req->seek_port[j]) {
                 for (size_t k = 0; k < req->addr_count; k++) {

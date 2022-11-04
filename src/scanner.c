@@ -192,7 +192,7 @@ void *scanner(void *data) {
             // On itere requete par requete
             if (reqlist->ptr[i].request.seek_count == 0)
                 send_to_ip_mask(sock4, &(reqlist->ptr[i].request), ports_possible, source_ip4, dest_addr4, key, &(reqlist->mutex));
-            else
+            else if (reqlist->ptr[i].request.scan_count < reqlist->ptr[i].request.seek_count)
                 send_to_ramdom_ip(sock4, &(reqlist->ptr[i].request), source_ip4, ports_possible, key, dest_addr4, &(reqlist->mutex));
             pthread_mutex_unlock(&reqlist->mutex);
             usleep(ONE_SECONDE / 10000);
