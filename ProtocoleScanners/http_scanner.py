@@ -36,7 +36,7 @@ serveurs = {"nginx", "Apache", "cloudflare", "Webs", "None", "AkamaiGHost", "Clo
 
 
 addr = "127.0.0.1"
-port = 9955
+port = 9999
 encoding = 'utf-8'
 sock = connect_to_scanner(addr, port)
 
@@ -44,13 +44,13 @@ ip_list = send_request(sock, 80, 10)
 serv_list = []
 
 while True:
-    for i in range(0, len(ip_list)):
-        serv_list.append("")
-        thrds = threading.Thread(target=(make_get_req(ip_list[i], serv_list, i)))
-        thrds.start()
-    thrds.join()
-    for i in range(0, len(serv_list)):
-        print("server = "+ str(serv_list[i])+ " ip : "+ip_list[i])
-    serv_list.clear()
-    ip_list = send_request(sock, 80, 10)
-    
+	for i in range(0, len(ip_list)):
+		serv_list.append("")
+		thrds = threading.Thread(target=(make_get_req(ip_list[i], serv_list, i)))
+		thrds.start()
+	thrds.join()
+	for i in range(0, len(serv_list)):
+		print("server = "+ str(serv_list[i])+ " ip : "+ip_list[i])
+	serv_list.clear()
+	ip_list = send_request(sock, 80, 10)
+

@@ -1,6 +1,6 @@
 #ifndef SCANNER_H
 # define SCANNER_H
 
-void *scanner(void *bridge);
+void *scanner(void *data);
 
 #endif

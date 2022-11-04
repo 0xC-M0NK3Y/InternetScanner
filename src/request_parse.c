@@ -4,6 +4,7 @@
 
 #include "defines.h"
 #include "structs.h"
+#include "utils.h"
 
 static inline int	check_password(char **str) {
 	char	*ptr;
@@ -145,6 +146,11 @@ int	parse_request(request_t	*req, char *str) {
 
 	if (*str != '\n')
 		return free(req->addresses), free(req->seek_port), -__LINE__;
+
+	// On doit créer les ratio pour prendre aléatoirement
+	if (req->seek_count != 0)
+		if ((r = create_ratio(req)) < 0)
+			return free(req->addresses), r;
 
 	return 0;
 }

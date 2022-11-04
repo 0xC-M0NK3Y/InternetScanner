@@ -133,3 +133,75 @@ int parse_arg(char *arg, analyse_t *reader) {
 
     return ret;
 }
+
+static inline int  quit_cond(uint128_t *elem, size_t nb) {
+  uint128_t space = 0xFFFFFFFF;
+
+  for (size_t i = 0; i < nb; i++) {
+      if (elem[i] > space)
+        return 1;
+    space -= elem[i];
+  }
+  return 0;
+}
+
+int create_ratio(request_t *req) {
+    uint128_t min;
+    size_t    index;
+    uint128_t *tmp_ratio;
+    uint64_t  *tmp_ptr = malloc(req->addr_count * sizeof(uint64_t) * 2);
+    if (tmp_ptr == NULL)
+        return -__LINE__;
+    tmp_ratio = (uint128_t *)tmp_ptr;
+
+    // On stock le nombre de possibilité de chaque target, mask
+    for (size_t i = 0; i < req->addr_count; i++) {
+        if (req->addresses[i].type == 4) {
+            tmp_ratio[i] = ((uint128_t) 1 << (32 - req->addresses[i].CDIR));
+        }
+        else if (req->addresses[i].type == 6) {
+            if (req->addresses[i].CDIR == 0)
+                tmp_ratio[i] = ((uint128_t)1 << (128 - req->addresses[i].CDIR)) - 1;
+            else
+                tmp_ratio[i] = ((uint128_t)1 << (128 - req->addresses[i].CDIR));
+        }
+    }
+    min = tmp_ratio[0];
+    index = 0;
+    // On cherche le plus petit
+    for (size_t i = 1; i < req->addr_count; i++) {
+        if (tmp_ratio[i] < min) {
+            min = tmp_ratio[i];
+            index = i;
+        }
+    }
+    // On créer les ratios
+    for (size_t i = 0; i < req->addr_count; i++) {
+        if (i != index)
+            tmp_ratio[i] = min / tmp_ratio[i];
+    }
+    tmp_ratio[index] = tmp_ratio[index] / tmp_ratio[index]; // = 1;
+
+    // On ajuste les ratio en uint32_t
+    while (quit_cond(tmp_ratio, req->addr_count))
+    {
+        for (size_t i = 0; i < req->addr_count; i++) {
+            if (tmp_ratio[i] > 1)
+                tmp_ratio[i] >>= 1;
+        }
+    }
+
+    // On recup les ratio
+    for (size_t i = 0; i < req->addr_count; i++)
+        req->addresses[i].ratio = (uint32_t)tmp_ratio[i];
+
+    req->somme_ratio = 0;
+
+    // On créer la somme
+    for (size_t i = 0; i < req->addr_count; i++)
+        req->somme_ratio += req->addresses[i].ratio;
+
+    free(tmp_ptr);
+    return 1;
+}
+

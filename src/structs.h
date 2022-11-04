@@ -5,6 +5,8 @@
 
 #include "defines.h"
 
+typedef uint8_t stop_t;
+
 typedef struct analyse
 {
     ipv4_t	listen_ipv4;
@@ -19,6 +21,7 @@ typedef struct target_address {
 	} addr;
 	uint8_t	type;	/* v4/v6 */
 	uint8_t	CDIR;	/* .../x */
+	uint32_t ratio;
 }	target_address_t;
 
 typedef struct request {
@@ -28,6 +31,8 @@ typedef struct request {
 	size_t				seek_count;		/* le nombre de résultat qu'on veut */
 	port_t				*seek_port;
 	size_t				port_count;
+	uint32_t			somme_ratio;
+
 
 	/* si on scan toutes les IPs, faut choisir un temps d'attente
 	 * pour recevoir les réponses des scans sur les dernières IPs
@@ -35,6 +40,18 @@ typedef struct request {
 	*/
 	time_t				finished_at;
 } request_t;
+
+typedef struct communicator {
+	request_t request;
+	SOCKET	  client;
+} communicator_t;
+
+typedef struct request_list {
+	pthread_mutex_t mutex;
+	communicator_t *ptr;
+	volatile size_t len;
+	size_t cap;
+}	reqlist_t;
 
 /*
 typedef struct found_address {
@@ -51,10 +68,6 @@ typedef struct response {
 	found_address_t *found;
 } response_t;
 */
-typedef struct communicator {
-	request_t *request;
-	uint8_t   *stop;
-	SOCKET	  client;
-} communicator_t;
+
 
 #endif

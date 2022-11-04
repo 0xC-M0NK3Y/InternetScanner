@@ -8,8 +8,6 @@
 static void create_ip_header6(IP_HEADER6 *ip_hdr, ipv6_t source_ip, ipv6_t dest_ip) {
 
     memset(ip_hdr, 0, sizeof(IP_HEADER6));
-    // et le truc c'est que ya un next header, celui du tcp
-    // je suis pas sur en vrai, memcpy pour etre sur au pire
     ip_hdr->ip6_ctlun.ip6_un2_vfc = VERSION_IPV6; // 4 bits pour la version
     ip_hdr->ip6_ctlun.ip6_un1.ip6_un1_flow = 0; // Utilité similaire à Type Of Service de ipv4 Header, 0 = default (traffic class + flow)
     ip_hdr->ip6_ctlun.ip6_un1.ip6_un1_plen = sizeof(TCP_HEADER); // Taille du payload sans compter ce header, donc juste sizeof(TCP_HEADER);
@@ -25,14 +23,14 @@ static void create_ip_header4(IP_HEADER *ip_hdr, ipv4_t source_ip, ipv4_t dest_i
 
     ip_hdr->version = VERSION_IPV4;
     ip_hdr->ihl = INTERNET_HEADER_LENGTH;
-    ip_hdr->tos = DEFAULT_TOS;
+    ip_hdr->tos = MAXIMIZE_RELIABILITY;
     ip_hdr->tot_len = PACKET_SIZE; // Taille total du paquet
     ip_hdr->id = 0; // inutilisé, incrémenté de datagram en datagram apparement
                    // d'après la RFC 791 :
                                         // An identifying value assigned by the sender to aid in assembling the
                                         // fragments of a datagram.
     ip_hdr->frag_off = NO_FRAG; // Permet de fragmenter un gros paquet en petits paquets
-    ip_hdr->ttl = 51; // Nombre de saut que la paquet peut faire, decrementé a chaque seconde ou chaque saut si c'est moins de 1sec
+    ip_hdr->ttl = 255; // Nombre de saut que la paquet peut faire, decrementé a chaque seconde ou chaque saut si c'est moins de 1sec
     ip_hdr->protocol = IPPROTO_TCP; // protocole utilisé, definie dans in.h
     //ip_hdr.check; somme de controle calculé à la fin
     ip_hdr->saddr = source_ip; // source ip

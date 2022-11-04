@@ -31,18 +31,15 @@ int main(int argc, char **argv)
     int flags;      
     SOCKET *socks;              // socket pour ecouter les demande des clients
     int nb_socks = 0;
-    int i = 0;
+    int i = 0;                  // pollnb
     SOCKET client;              // socket du client qui se connect
     int ipv4_sock = -1;
     int unix_sock = -1;
     POLLFD pollfd[50];
-    char msg[100];
-    int msg_len;
-    request_t *req;
-    communicator_t bridge;
-    pthread_t listen_thread;
-    pthread_t scan_thread;
-    char *response;
+    pthread_t listen_thread;    // thread ecoute
+    pthread_t scan_thread;      // thread envoi
+    reqlist_t *reqlist;
+    communicator_t *bridge = NULL;
 
     if (argc != 2) {
         printf("Usage: %s <listen_format>\n", argv[0]);
@@ -56,7 +53,6 @@ int main(int argc, char **argv)
     }
 
     memset(pollfd, 0, 50 * sizeof(POLLFD));
-    memset(&req, 0, sizeof(request_t));
 
     if ((flags & FLAG_UNIX) == FLAG_UNIX)
         nb_socks++;
@@ -69,6 +65,9 @@ int main(int argc, char **argv)
         return 1;
     }
 
+
+    /* Construction de l'écoute du serveur. */
+
     if ((flags & FLAG_IPV4) == FLAG_IPV4) {
         struct in_addr tmp;
         SOCKADDRV4 ipv4_addr;
@@ -80,6 +79,7 @@ int main(int argc, char **argv)
         socks[i] = socket(AF_INET, SOCK_STREAM, 0);
         if (socks[i] < 0)
             return perror("Socket"), free(socks), 1;
+		setsockopt(socks[i], SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
         if (bind(socks[i], (struct sockaddr *)&ipv4_addr, sizeof(SOCKADDRV4)) < 0)
             return perror("Binding"), free(socks), 1;
         if (listen(socks[i], 0) < 0)
@@ -108,16 +108,46 @@ int main(int argc, char **argv)
         printf("Listenning on unix socket, path %s\n", reader.unix_path);
     }
 
-    bridge.stop = malloc(1);
-    if (bridge.stop == NULL)
-        return perror("malloc"), free(socks), free(req), 1;
-    bridge.stop[0] = 0;
+    reqlist = malloc(sizeof(reqlist_t));
+    if (reqlist == NULL)
+        return perror("malloc"), free(socks), 1;
+
+    reqlist->ptr = bridge;
+    reqlist->len = 0;
+    reqlist->cap = 50;
+
+    pthread_mutex_init(&reqlist->mutex, NULL);
+
+    pthread_create(&scan_thread, NULL, scanner, (void *)reqlist);
+    pthread_create(&listen_thread, NULL, listenner, (void *)reqlist);
 
     printf("Waiting for client\n");
     while (1)
     {
-        if (poll(pollfd, i, -1) < 0)
+        if (poll(pollfd, i, 1000) < 0)
             return perror("poll"), free(socks), 1;
+        // ckeck ici chaque requete le status
+        // TODO: si passer le cap realloc a la baisse
+        pthread_mutex_lock(&reqlist->mutex);
+        for (size_t j = 0; j < reqlist->len; j++) {
+            request_t *req = &(reqlist->ptr[j].request);
+            if (req->seek_count == 0) {
+                if (time(NULL) - req->finished_at >= TIMEOUT) {
+                    memmove(&reqlist->ptr[j], &reqlist->ptr[j + 1], (reqlist->len - j) * sizeof(communicator_t));
+                    printf("request %ld ended\n", j+1);
+                    reqlist->len--;
+                    j--;
+                }
+            } else if (req->seek_count) {
+                if (req->scan_count == req->seek_count) {
+                    memmove(&reqlist->ptr[j], &reqlist->ptr[j + 1], (reqlist->len - j) * sizeof(communicator_t));
+                    printf("request %ld ended\n", j+1);
+                    reqlist->len--;
+                    j--;
+                }
+            }
+        }
+        pthread_mutex_unlock(&reqlist->mutex);
         for (int j = 0; j < i; j++) {
             if (pollfd[j].revents == POLLIN) {
                 if (j == ipv4_sock) {
@@ -132,41 +162,38 @@ int main(int argc, char **argv)
                         pollfd[i].revents = 0;
                         fcntl(pollfd[i].fd, F_SETFL, fcntl(pollfd[i].fd, F_GETFL, 0) | O_NONBLOCK);
                         i++;
+				        printf("Client connected from %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
                     }
-                    printf("Client connected from %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
                 }
                 else if (j == unix_sock) {
                     // handle unix socket
                 }
                 else { // client socket
+                    int len;
+                    char msg[100];
                     int r;
-                    memset(msg, 0, 100);
 
-                    msg_len = recv(pollfd[j].fd, msg, 100, 0);
-                    if (msg_len == 0) {
+                    memset(msg, 0, 100);
+                    len = recv(pollfd[j].fd, msg, 100, 0);
+                    if (len == 0) {
                         printf("Client disconnected\n");
                         memmove(&pollfd[j], &pollfd[j+1], (i - j) * sizeof(POLLFD));
                         i--;
                         continue;
                     }
-                    printf("Received request len : %d\n", msg_len);
-                    req = malloc(sizeof(request_t));
-                    if (req == NULL)
-                        return perror("malloc"), free(socks), 1;
-                    bridge.request = req;
-                    if ((r = parse_request(req, msg)) < 0)
-                        printf("Failed create request : %d\n", r);
-                    else {
-                        bridge.client = pollfd[j].fd;
-                        bridge.stop[0] = 0;
-                        pthread_create(&scan_thread, NULL, scanner, (void *)&bridge);
-                        pthread_create(&listen_thread, NULL, listenner, (void *)&bridge);
-                        pthread_join(listen_thread, (void **)&response);
-                        pthread_join(scan_thread, NULL);
-                        bridge.stop[0] = 1;
-                        free_request(req);
-                        printf("Request done\n");
+                    pthread_mutex_lock(&reqlist->mutex);
+                    if (reqlist->len == reqlist->cap) {
+                        send(pollfd[j].fd, "Y'a trop de requete la zin att un peu !\n", 41, 0);
+                        continue;
                     }
+                    reqlist->ptr = realloc(reqlist->ptr, (reqlist->len+1) * sizeof(communicator_t));
+                    reqlist->ptr[reqlist->len].client = pollfd[j].fd;
+                    if ((r = parse_request(&(reqlist->ptr[reqlist->len].request), msg)) < 0)
+                        printf("Failed create request %d\n", r);
+                    else
+                        reqlist->len++;
+                    printf("New request %ld\n", reqlist->len);
+                    pthread_mutex_unlock(&reqlist->mutex);
                 }
             }
         }

@@ -18,107 +18,53 @@
 
 #include "listenner.h"
 
+#define DEBIT_OpS 1000
+#define ONE_SECONDE 1000000
 
-static inline void send_to_ipv4_mask(SOCKET sock, ipv4_t first_ip, uint8_t mask, port_t dest_port, port_t *ports_possible,  ipv4_t source_ip, SOCKADDRIN dest_addr, uint32_t *key) {
-    port_t source_port;
-    packet_t packet;
-    struct in_addr tmp;
-    uint32_t bit_mask = ~((1 << (32 - mask)) - 1);
+static void send_to_ip_mask(SOCKET sock4, request_t *req, port_t *ports_possible, ipv4_t source_ip, SOCKADDRV4 dest_addr4, uint32_t *key, pthread_mutex_t *mutex) {
+    uint32_t index = req->addr_count - 1;
 
-    for (ipv4_t ip = first_ip & (bit_mask >> (32 - mask)); ip <= (first_ip | ((~bit_mask << mask) - 1)); ) {
-        source_port = htons(ports_possible[GET_PORT(ip, 80, key[(time(NULL)/10)%2])]);
-        create_packet4(&packet, source_ip, ip, dest_port, source_port);
-        if (sendto(sock, &packet, PACKET_SIZE, 0, (struct sockaddr *)&dest_addr, sizeof(SOCKADDRIN)) < 0) {
-            tmp.s_addr = ip;
+    if (req->finished_at != 0)
+        return;
+    if (req->addresses[index].type == 4) {
+        uint32_t bit_mask = ~((1 << (32 - req->addresses[index].CDIR)) - 1);
+        ipv4_t first_ip = ntohl(req->addresses[index].addr.v4);
+        ipv4_t dest_ip = (first_ip & bit_mask) + (req->scan_count / req->port_count);
+        port_t source_port = htons(ports_possible[GET_PORT(dest_ip, 80, key[(time(NULL)/10)%2])]);
+        port_t dest_port = req->seek_port[req->scan_count % req->port_count];
+        packet_t packet;
+
+        dest_addr4.sin_port = dest_port;
+        create_packet4(&packet, source_ip, htonl(dest_ip), dest_port, source_port);
+        pthread_mutex_unlock(mutex);
+        if (sendto(sock4, &packet, sizeof(packet_t), 0, (struct sockaddr *)&dest_addr4, sizeof(SOCKADDRV4)) < 0) {
+            struct in_addr tmp;
+            tmp.s_addr = dest_ip;
             perror("sendto");
             printf("On %s:%d from %d\n", inet_ntoa(tmp), ntohs(dest_port), ntohs(source_port));
         }
-        tmp.s_addr = ip;
-        printf("send to %s:%d from %d\n", inet_ntoa(tmp), ntohs(dest_port), ntohs(source_port));
-        ip = ntohl(ip);
-        ip++;
-        ip = ntohl(ip);
+        pthread_mutex_lock(mutex);
+        req->scan_count++;
+        if (dest_ip == (first_ip | ~bit_mask)) {
+            req->addr_count--;
+            req->scan_count = 0;
+        }
+        if (req->addr_count == 0)
+            req->finished_at = time(NULL);
+    } else if (req->addresses[index].type == 6) {
+
+    } else {
+        // ERREUR inconnue
+        // impossible de rentrer ivi en theorie
     }
-    fflush(stdout);
 }
 
-static inline int  quit_cond(uint128_t *elem, size_t nb) {
-  uint128_t space = 0xFFFFFFFF;
-
-  for (size_t i = 0; i < nb; i++) {
-      if (elem[i] > space)
-        return 1;
-    space -= elem[i];
-  }
-  return 0;
-}
-
-static uint32_t *create_ratio(uint128_t *ratio, request_t req) {
-    uint128_t min;
-    size_t    index;
-    uint32_t *ret;
-
-    ret = malloc(req.addr_count * sizeof(uint32_t));
-    if (ret == NULL)
-        return perror("malloc ratio"), NULL;
-
-    // On stock le nombre de possibilité de chaque target, mask
-    for (size_t i = 0; i < req.addr_count; i++) {
-        if (req.addresses[i].type == 4) {
-            ratio[i] = ((uint128_t) 1 << (32 - req.addresses[i].CDIR));
-        }
-        else if (req.addresses[i].type == 6) {
-            if (req.addresses[i].CDIR == 0)
-                ratio[i] = ((uint128_t)1 << (128 - req.addresses[i].CDIR)) - 1;
-            else
-                ratio[i] = ((uint128_t)1 << (128 - req.addresses[i].CDIR));
-        }
-    }
-    min = ratio[0];
-    index = 0;
-    // On cherche le plus petit
-    for (size_t i = 1; i < req.addr_count; i++) {
-        if (ratio[i] < min) {
-            min = ratio[i];
-            index = i;
-        }
-    }
-    // On créer les ratios
-    for (size_t i = 0; i < req.addr_count; i++) {
-        if (i != index)
-            ratio[i] = min / ratio[i];
-    }
-    ratio[index] = ratio[index] / ratio[index]; // = 1;
-
-    while (quit_cond(ratio, req.addr_count))
-    {
-        for (size_t i = 0; i < req.addr_count; i++) {
-            if (ratio[i] > 1)
-                ratio[i] >>= 1;
-        }
-    }
-
-    for (size_t i = 0; i < req.addr_count; i++)
-        ret[i] = (uint32_t)ratio[i];
-
-    free(ratio);
-    return ret;
-}
-
-static uint32_t somme_ratio(uint32_t *ratio, size_t nb) {
-    uint32_t ret = 0;
-
-    for (size_t i = 0; i < nb; i++)
-        ret += ratio[i];
-    return ret;
-}
-
-uint32_t get_index(uint32_t rand, uint32_t *ratio, size_t nb) {
-    for (size_t i = 0; i < nb; i++) {
-        if (rand - ratio[i] <= 0)
+uint32_t get_index(uint32_t rand, request_t *req) {
+    for (size_t i = 0; i < req->addr_count; i++) {
+        if (rand - req->addresses[i].ratio <= 0)
             return i;
     }
-    return nb - 1;
+    return req->addr_count - 1;
 }
 
 ipv4_t get_random_ipv4(ipv4_t addr, uint8_t mask) {
@@ -158,17 +104,39 @@ port_t get_random_port(port_t *ports, size_t nb) {
     return *(ports + rand);
 }
 
+// TODO: rajouter socket pour ipv6 si faisable
+static void send_to_ramdom_ip(SOCKET sock4, request_t *req, ipv4_t source_ip, port_t *ports_possible, uint32_t *key, SOCKADDRV4 dest_addr4, pthread_mutex_t *mutex) {
+    uint32_t index;
 
+    index = get_index(random() % req->somme_ratio, req);
+    if (req->addresses[index].type == 4) {
+        ipv4_t dest_ip = get_random_ipv4(req->addresses[index].addr.v4, req->addresses[index].CDIR);
+        port_t dest_port = get_random_port(req->seek_port, req->port_count);
+        port_t source_port = htons(ports_possible[GET_PORT(dest_ip, dest_port, key[(time(NULL)/10)%2])]);
+        packet_t packet;
 
-void *scanner(void *bridge) {
-    communicator_t *brd = bridge;
-    request_t *req = brd->request;
-    uint8_t *stop = brd->stop;
-    target_address_t *addresses = req->addresses;
-    size_t port_count = req->port_count;
-    port_t *seek_port = req->seek_port;
-    size_t addr_count = req->addr_count;
-    ipv4_t source_ip = inet_addr("192.168.1.27");
+        dest_addr4.sin_port = dest_port;
+        create_packet4(&packet, source_ip, dest_ip, dest_port, source_port);
+        pthread_mutex_unlock(mutex);
+        if (sendto(sock4, &packet, sizeof(packet_t), 0, (struct sockaddr *)&dest_addr4, sizeof(SOCKADDRV4)) < 0) {
+            struct in_addr tmp;
+            tmp.s_addr = dest_ip;
+            perror("sendto");
+            printf("On %s:%d from %d\n", inet_ntoa(tmp), ntohs(dest_port), ntohs(source_port));
+        }
+        pthread_mutex_lock(mutex);
+    } else if (req->addresses[index].type == 6) {
+        // TODO faire ipv6;
+    } else {
+        // ERREUR INCONNUE
+        // impossible de rentrer ici normalement
+    }
+
+}
+
+void *scanner(void *data) {
+    reqlist_t *reqlist = (reqlist_t *)data;
+    ipv4_t source_ip4 = inet_addr("192.168.1.15");
     //ipv6_t source_ip6;
     uint32_t key[2] = {696969, 262626};
     SOCKET sock4;
@@ -176,16 +144,12 @@ void *scanner(void *bridge) {
     SOCKADDRV4 dest_addr4;
     //SOCKADDRV6 dest_addr6;
     int dummy = 1;
-    port_t ports_possible[POSSIBLE_PORTS_SIZE] = {1234, 1235, 1236, 1237, 1238, 1239, 2345, 2346, 
+    /*port_t ports_possible[POSSIBLE_PORTS_SIZE] = {1234, 1235, 1236, 1237, 1238, 1239, 2345, 2346, 
                                                   2347, 2348, 3456, 3457, 3458, 3459, 4567, 4568, 
                                                   4569, 5678, 5679, 1111, 1212, 1313, 1414, 1515,
-                                                  1616, 1717, 1818, 1919, 2222, 2323, 2424, 2525};
-    uint128_t *tmp_ratio;
-    uint32_t *ratio;
-    uint32_t somme;
-    uint32_t tmp_rand;
-    uint32_t index;
-    uint64_t *tmp_ptr;
+                                                  1616, 1717, 1818, 1919, 2222, 2323, 2424, 2525};*/
+	port_t ports_possible[POSSIBLE_PORTS_SIZE] = {6969};
+   // uint64_t wait_time = ONE_SECONDE / DEBIT_OpS / sizeof(packet_t);
 
     sock4 = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
     if (sock4 < 0) {
@@ -222,76 +186,26 @@ void *scanner(void *bridge) {
     dest_addr6.sin6_port = 80;
     inet_pton(AF_INET6, "2001:4860:4860::8888", &dest_addr6.sin6_addr); // = 8.8.8.8
 */
-    if (req->seek_count == 0) {
-        printf("Scanner thread start [ScanALL]\n");
-        for (size_t i = 0; i < addr_count; i++) {
-            for (size_t j = 0; j < port_count; j++) {
-                dest_addr4.sin_port = seek_port[j];
-                send_to_ipv4_mask(sock4, addresses[i].addr.v4, addresses[i].CDIR, seek_port[j], ports_possible, source_ip, dest_addr4, key);
-            }
-        }
-        req->finished_at = time(NULL);
-        stop[0] = 1;
-        printf("End scanner\n");
-        return NULL;
-    }
 
-    // Si que 1 addr somme sera egale à 1
-    tmp_ptr = malloc(addr_count * sizeof(uint64_t) * 2);
-    if (tmp_ptr == NULL)
-        return printf("Failed malloc %d\n", __LINE__), NULL;
-    tmp_ratio = (uint128_t *)tmp_ptr;
-    ratio = create_ratio(tmp_ratio, *req);
-    somme = somme_ratio(ratio, addr_count);
-
-    printf("Scanner thread start [Random]\n");
-
-    // Sinon scan random
-    while (!stop[0])
+    printf("Thread Scanner started\n");
+    while (1)
     {
-        tmp_rand = random() % somme;
-        index = get_index(tmp_rand, ratio, addr_count);
-        if (addresses[index].type == 4) {
-            ipv4_t ip = get_random_ipv4(addresses[index].addr.v4, addresses[index].CDIR);
-            port_t dest_port = get_random_port(seek_port, port_count);
-            port_t source_port = htons(ports_possible[GET_PORT(ip, dest_port, key[(time(NULL)/10)%2])]);
-            packet_t packet;
-            struct in_addr tmp;
-
-            tmp.s_addr = ip;
-            dest_addr4.sin_port = dest_port;
-            create_packet4(&packet, source_ip, ip, dest_port, source_port);
-            if (sendto(sock4, &packet, sizeof(packet_t), 0, (struct sockaddr *)&dest_addr4, sizeof(SOCKADDRV4)) < 0) {
-                tmp.s_addr = ip;
-                perror("sendto");
-                printf("On %s:%d from %d\n", inet_ntoa(tmp), ntohs(dest_port), ntohs(source_port));
-            }
-        } else if (addresses[index].type == 6) {
-            /* MARCHE PAS
-            //ipv6_t ip = get_random_ipv6(addresses[index].addr.v6, addresses[index].CDIR);
-            ipv6_t ip;
-
-            inet_pton(AF_INET6, "2a00:1450:4007:80e::200e", &ip); // ip youtube pour test
-
-            port_t dest_port = get_random_port(seek_port, port_count);
-            port_t source_port = htons(get_random_port(ports_possible, POSSIBLE_PORTS_SIZE));
-            packet6_t packet;
-
-            dest_addr6.sin6_port = dest_port;
-            create_packet6(&packet, source_ip6, ip, dest_port, source_port);
-            if (sendto(sock6, &packet, sizeof(packet6_t), 0, (struct sockaddr *)&dest_addr6, sizeof(SOCKADDRV6)) < 0) {
-                perror("sendto ipv6");
-            }
-            */
-        } else {
-            // on devrait jamais rentrer ici
+        pthread_mutex_lock(&reqlist->mutex);
+        for (size_t i = 0; i < reqlist->len; i++) {
+            // On itere requete par requete
+            if (reqlist->ptr[i].request.seek_count == 0)
+                send_to_ip_mask(sock4, &(reqlist->ptr[i].request), ports_possible, source_ip4, dest_addr4, key, &(reqlist->mutex));
+            else
+                send_to_ramdom_ip(sock4, &(reqlist->ptr[i].request), source_ip4, ports_possible, key, dest_addr4, &(reqlist->mutex));
+            pthread_mutex_unlock(&reqlist->mutex);
+            usleep(ONE_SECONDE/5);
+            pthread_mutex_lock(&reqlist->mutex);
         }
+        pthread_mutex_unlock(&reqlist->mutex);
     }
 
     close(sock4);
     //close(sock6);
-
-    free(ratio);
 
     printf("End scanner\n");
 
