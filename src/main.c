@@ -133,7 +133,7 @@ int main(int argc, char **argv)
             request_t *req = &(reqlist->ptr[j].request);
             if (req->seek_count == 0) {
                 if (time(NULL) - req->finished_at >= TIMEOUT) {
-                    send(reqlist->ptr[j].client, "end\n", 5, 0);
+                    send(reqlist->ptr[j].client, "end\n", 5, MSG_NOSIGNAL);
                     memmove(&reqlist->ptr[j], &reqlist->ptr[j + 1], (reqlist->len - j) * sizeof(communicator_t));
                     printf("request %ld ended\n", j+1);
                     reqlist->len--;
@@ -141,7 +141,7 @@ int main(int argc, char **argv)
                 }
             } else if (req->seek_count) {
                 if (req->scan_count >= req->seek_count) {
-                    send(reqlist->ptr[j].client, "end\n", 5, 0);
+                    send(reqlist->ptr[j].client, "end\n", 5, MSG_NOSIGNAL);
                     memmove(&reqlist->ptr[j], &reqlist->ptr[j + 1], (reqlist->len - j) * sizeof(communicator_t));
                     printf("request %ld ended\n", j+1);
                     reqlist->len--;
@@ -185,7 +185,7 @@ int main(int argc, char **argv)
                     }
                     pthread_mutex_lock(&reqlist->mutex);
                     if (reqlist->len >= reqlist->cap) {
-                        send(pollfd[j].fd, "Y'a trop de requete la zin att un peu !\n", 41, 0);
+                        send(pollfd[j].fd, "Y'a trop de requete la zin att un peu !\n", 41, MSG_NOSIGNAL);
                         continue;
                     }
                     reqlist->ptr = realloc(reqlist->ptr, (reqlist->len+1) * sizeof(communicator_t));

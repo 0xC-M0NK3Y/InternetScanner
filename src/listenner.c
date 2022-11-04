@@ -81,7 +81,7 @@ static void send_to_correspondant_client(reqlist_t *reqlist, ipv4_t ip, port_t p
                             snprintf(ret, 23, "%s:%d\n", inet_ntoa(tmp), ntohs(port));
                             len = strlen(ret);
                             pthread_mutex_unlock(&reqlist->mutex);
-                            send(reqlist->ptr[i].client, ret, len, 0);
+                            send(reqlist->ptr[i].client, ret, len, MSG_NOSIGNAL);
                             pthread_mutex_lock(&reqlist->mutex);
                             if (req->seek_count != 0)
                                 req->scan_count++;
