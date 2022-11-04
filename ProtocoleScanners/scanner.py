@@ -22,7 +22,7 @@ async def scan(queue):
 async def fetcher(queue):
 	while True:
 		reader, writer = await asyncio.open_connection(*PORT_SCAN_ADDR)
-		#print("Connected")
+		print("Connected")
 		writer.write(f"{PASSWORD} {IP_RANGES} {SCAN_PORTS} {SCAN_AMOUNT}\n".encode())
 		await writer.drain()
 		while True:
@@ -30,7 +30,7 @@ async def fetcher(queue):
 			await queue.put(data.decode().strip())
 			if b"end" in data or len(data) == 0:
 				break
-		#print('Close the connection')
+		print('Close the connection')
 		writer.close()
 		await writer.wait_closed()
 		while not queue.empty():

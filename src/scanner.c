@@ -22,7 +22,7 @@
 #define ONE_SECONDE 1000000
 
 static void send_to_ip_mask(SOCKET sock4, request_t *req, port_t *ports_possible, ipv4_t source_ip, SOCKADDRV4 dest_addr4, uint32_t *key, pthread_mutex_t *mutex) {
-    uint32_t index = req->curr_addr - 1;
+    uint32_t index = req->curr_addr;
 
     if (req->finished_at != 0)
         return;
@@ -46,10 +46,10 @@ static void send_to_ip_mask(SOCKET sock4, request_t *req, port_t *ports_possible
         pthread_mutex_lock(mutex);
         req->scan_count++;
         if (dest_ip == (first_ip | ~bit_mask)) {
-            req->curr_addr--;
+            req->curr_addr++;
             req->scan_count = 0;
         }
-        if (req->curr_addr == 0)
+        if (req->curr_addr == req->addr_count)
             req->finished_at = time(NULL);
     } else if (req->addresses[index].type == 6) {
 

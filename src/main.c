@@ -132,7 +132,7 @@ int main(int argc, char **argv)
         pthread_mutex_lock(&reqlist->mutex);
         for (size_t j = 0; j < reqlist->len; j++) {
             request_t *req = &(reqlist->ptr[j].request);
-            if (req->seek_count == 0) {
+            if (req->seek_count == 0 && req->finished_at) {
                 if (time(NULL) - req->finished_at >= TIMEOUT) {
                     send(reqlist->ptr[j].client, "end\n", 5, MSG_NOSIGNAL);
                     memmove(&reqlist->ptr[j], &reqlist->ptr[j + 1], (reqlist->len - j) * sizeof(communicator_t));
