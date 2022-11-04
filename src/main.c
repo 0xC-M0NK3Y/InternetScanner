@@ -65,6 +65,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    srandom(time(NULL));
 
     /* Construction de l'écoute du serveur. */
 
