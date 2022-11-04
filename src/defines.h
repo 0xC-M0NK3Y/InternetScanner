@@ -32,5 +32,8 @@ typedef struct pollfd POLLFD;
 
 #define TIMEOUT 20
 
+#define RANDOM() (random() << 8 | (random() & 0xFF))
+
+
 typedef __uint128_t uint128_t;
 #endif

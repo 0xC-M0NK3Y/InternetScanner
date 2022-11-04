@@ -43,7 +43,7 @@ static void create_tcp_header(TCP_HEADER *tcp_hdr, port_t dest_port, port_t sour
 
     tcp_hdr->th_sport = source_port; // Source port
     tcp_hdr->th_dport = dest_port; // Dest port
-    tcp_hdr->th_seq = random(); // Sequence number
+    tcp_hdr->th_seq = RANDOM(); // Sequence number
                         // utilisé pour enumerer les segments tcp
     tcp_hdr->th_ack = 0; // Acknowledgment number
                             // utilisé par le recpteur pour demander le prochain segment tcp

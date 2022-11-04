@@ -10,18 +10,18 @@ async def scan(queue):
 		async with aiohttp.ClientSession() as session:
 			try:
 				async with session.get("http://"+target.split(':')[0]) as response:
-					print("Scan :", target.split(':')[0])
-					print("Status:", response.status)
-					print("Content-type:", response.headers['content-type'])
-					print("Server: ", response.headers['server'])
+					html = await response.text()
+					if "Index of /" in html or "Directory listing for /" in html:
+						print(target.split(':')[0], end='')
+						print(" | ",response.headers['server'])
 			except:
-				print("Fail on "+target.split(':')[0])
+				pass
 		queue.task_done()
 
 async def fetcher(queue):
 	while True:
 		reader, writer = await asyncio.open_connection(*PORT_SCAN_ADDR)
-		print("Connected")
+		#print("Connected")
 		writer.write(f"{PASSWORD} {IP_RANGES} {SCAN_PORTS} {SCAN_AMOUNT}\n".encode())
 		await writer.drain()
 		while True:
@@ -29,7 +29,7 @@ async def fetcher(queue):
 			await queue.put(data.decode().strip())
 			if b"end" in data or len(data) == 0:
 				break
-		print('Close the connection')
+		#print('Close the connection')
 		writer.close()
 		await writer.wait_closed()
 		while not queue.empty():

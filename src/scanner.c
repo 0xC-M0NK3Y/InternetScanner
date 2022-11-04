@@ -70,7 +70,7 @@ uint32_t get_index(uint32_t rand, request_t *req) {
 ipv4_t get_random_ipv4(ipv4_t addr, uint8_t mask) {
     uint32_t bit_mask = ~((1 << (32 - mask)) - 1);
     ipv4_t ip = addr & (bit_mask >> (32 - mask)); 
-    uint64_t rand = random() % (uint64_t)((uint64_t) 1 << (32 - mask));
+    uint64_t rand = RANDOM() % (uint64_t)((uint64_t) 1 << (32 - mask));
 
     ip = ntohl(ip);
     ip += (uint32_t)rand;
@@ -82,10 +82,10 @@ ipv4_t get_random_ipv4(ipv4_t addr, uint8_t mask) {
 ipv6_t get_random_ipv6(ipv6_t addr, uint8_t mask) {
     uint128_t bit_mask = ~((1 << (128 - mask)) - 1);
     ipv6_t ip;
-    uint128_t rand = random();
+    uint128_t rand = RANDOM();
     ipv6_t tmp;
 
-    rand |= random() << 63;
+    rand |= RANDOM() << 63;
     rand = rand % (uint128_t)((uint128_t) 1 << (128 - mask));
 
     for (int i = 0; i < 16; i++) {
@@ -100,7 +100,7 @@ ipv6_t get_random_ipv6(ipv6_t addr, uint8_t mask) {
 }
 
 port_t get_random_port(port_t *ports, size_t nb) {
-    uint32_t rand = random() % nb;
+    uint32_t rand = RANDOM() % nb;
     return *(ports + rand);
 }
 
@@ -108,7 +108,7 @@ port_t get_random_port(port_t *ports, size_t nb) {
 static void send_to_ramdom_ip(SOCKET sock4, request_t *req, ipv4_t source_ip, port_t *ports_possible, uint32_t *key, SOCKADDRV4 dest_addr4, pthread_mutex_t *mutex) {
     uint32_t index;
 
-    index = get_index(random() % req->somme_ratio, req);
+    index = get_index(RANDOM() % req->somme_ratio, req);
     if (req->addresses[index].type == 4) {
         ipv4_t dest_ip = get_random_ipv4(req->addresses[index].addr.v4, req->addresses[index].CDIR);
         port_t dest_port = get_random_port(req->seek_port, req->port_count);
