@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "curl.h": "c",
+        "string": "c"
+    }
+}
