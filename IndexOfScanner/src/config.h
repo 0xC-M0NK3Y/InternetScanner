@@ -11,7 +11,7 @@
 #define PASSWORD "groume"
 #define SEEK_IP "0.0.0.0/0"
 #define SEEK_PORT "80,88,8080,8888,8880,8000,8088"
-#define NUMBER 100
+#define NUMBER 150
 
 
 #endif

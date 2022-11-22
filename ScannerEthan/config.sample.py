@@ -15,22 +15,22 @@ DISCORD_WEBHOOK=None
 NOTIFY=["CVE-2018-11653", "webswing"]
 ORDERED_SCAN=False
 SCANS=[
-    Netwave,
-    Git,
-    # Cve_2017_9841,
-    # Cve_2020_5902,
-    Xmlrpc,
-    NoIndex,
-    Webswing,
-    TPLink
+	Netwave,
+	Git,
+	# Cve_2017_9841,
+	# Cve_2020_5902,
+	Xmlrpc,
+	NoIndex,
+	Webswing,
+	TPLink
 ]
 
 # SIMPLIFY PYTHON CODE
 SESSION_SETTINGS={
-    "timeout": ClientTimeout(total=TIMEOUT),
-    "headers": {}
+	"timeout": ClientTimeout(total=TIMEOUT),
+	"headers": {}
 }
 REQUEST_SETTINGS={
-    "proxy": PROXIES,
-    "allow_redirects": False
+	"proxy": PROXIES,
+	"allow_redirects": False
 }

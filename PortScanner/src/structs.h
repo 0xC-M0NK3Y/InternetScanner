@@ -9,9 +9,9 @@ typedef uint8_t stop_t;
 
 typedef struct analyse
 {
-    ipv4_t	listen_ipv4;
-    port_t	listen_portv4;
-    char	unix_path[108];
+	ipv4_t	listen_ipv4;
+	port_t	listen_portv4;
+	char	unix_path[108];
 }   analyse_t;
 
 typedef struct target_address {

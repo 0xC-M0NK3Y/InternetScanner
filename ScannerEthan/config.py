@@ -18,24 +18,24 @@ DISCORD_WEBHOOK="https://discord.com/api/webhooks/803729224816787506/Lc3uhrpDOI6
 NOTIFY=["CVE-2018-11653", "CVE-2020-5902", "CVE-2017-9841", "CVE-2018-8880", "webswing", "traversal_path", "absolute"]
 ORDERED_SCAN=False
 SCANS=[
-    #Netwave,
-    Git,
-    #Cve_2017_9841,
-    #Cve_2020_5902,
-    #CVE_2018_8880,
-    #NoIndex,
-    #Webswing,
-    #TPLink,
-    #Xmlrpc,
-    Absolute,
-    TraversalPath
+	#Netwave,
+	Git,
+	#Cve_2017_9841,
+	#Cve_2020_5902,
+	#CVE_2018_8880,
+	#NoIndex,
+	#Webswing,
+	#TPLink,
+	#Xmlrpc,
+	Absolute,
+	TraversalPath
 ]
 
 SESSION_SETTINGS={
-    "timeout": ClientTimeout(total=TIMEOUT),
-    "headers": {}
+	"timeout": ClientTimeout(total=TIMEOUT),
+	"headers": {}
 }
 REQUEST_SETTINGS={
-    "proxy": PROXIES,
-    "allow_redirects": False
+	"proxy": PROXIES,
+	"allow_redirects": False
 }
