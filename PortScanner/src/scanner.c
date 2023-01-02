@@ -30,8 +30,8 @@ static void send_to_ip_mask(SOCKET sock4, request_t *req, port_t *ports_possible
 		uint32_t bit_mask = ~((1 << (32 - req->addresses[index].CDIR)) - 1);
 		ipv4_t first_ip = ntohl(req->addresses[index].addr.v4);
 		ipv4_t dest_ip = (first_ip & bit_mask) + (req->scan_count / req->port_count);
-		port_t source_port = htons(ports_possible[GET_PORT(dest_ip, 80, key[(time(NULL)/10)%2])]);
 		port_t dest_port = req->seek_port[req->scan_count % req->port_count];
+		port_t source_port = htons(ports_possible[GET_PORT(dest_ip, dest_port, key[(time(NULL)/10)%2])]);
 		packet_t packet;
 
 		dest_addr4.sin_port = dest_port;
@@ -45,7 +45,7 @@ static void send_to_ip_mask(SOCKET sock4, request_t *req, port_t *ports_possible
 		}
 		pthread_mutex_lock(mutex);
 		req->scan_count++;
-		if (dest_ip == (first_ip | ~bit_mask)) {
+		if (req->scan_count >= (req->port_count * (1 << (32 - req->addresses[index].CDIR)))) {
 			req->curr_addr++;
 			req->scan_count = 0;
 		}
@@ -136,7 +136,7 @@ static void send_to_ramdom_ip(SOCKET sock4, request_t *req, ipv4_t source_ip, po
 
 void *scanner(void *data) {
 	reqlist_t *reqlist = (reqlist_t *)data;
-	ipv4_t source_ip4 = inet_addr("87.106.196.195");
+	ipv4_t source_ip4 = inet_addr("10.18.205.61");
 	//ipv6_t source_ip6;
 	uint32_t key[2] = {696969, 262626};
 	SOCKET sock4;
@@ -175,7 +175,7 @@ void *scanner(void *data) {
 	memset(&dest_addr4, 0, sizeof(SOCKADDRV4));
 	//memset(&dest_addr6, 0, sizeof(SOCKADDRV6));
 
-	dest_addr4.sin_addr.s_addr = inet_addr("8.8.8.8");
+	dest_addr4.sin_addr.s_addr = inet_addr("10.51.0.7");
 	dest_addr4.sin_family = AF_INET;
 /*
 	inet_pton(AF_INET6, "2a01:cb1d:22c:1b00:7117:5cee:2860:2b42", &source_ip6); // mon ipv6 local wlo1
@@ -195,7 +195,7 @@ void *scanner(void *data) {
 			else if (reqlist->ptr[i].request.scan_count < reqlist->ptr[i].request.seek_count)
 				send_to_ramdom_ip(sock4, &(reqlist->ptr[i].request), source_ip4, ports_possible, key, dest_addr4, &(reqlist->mutex));
 			pthread_mutex_unlock(&reqlist->mutex);
-			usleep(ONE_SECONDE / 10000);
+			usleep(1);
 			pthread_mutex_lock(&reqlist->mutex);
 		}
 		pthread_mutex_unlock(&reqlist->mutex);

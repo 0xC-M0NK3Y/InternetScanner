@@ -70,7 +70,7 @@ static void send_to_correspondant_client(reqlist_t *reqlist, ipv4_t ip, port_t p
 
 					if (req->addresses[k].CDIR == 0)
 						bit_mask = 0;
-					if (ip >= (first_ip & bit_mask) && ip <= (first_ip | ~bit_mask)) {
+					if (ip >= (first_ip & bit_mask) && ip <= (first_ip | ~bit_mask)) {//ip >= (first_ip & bit_mask) && ip <= (first_ip | ~bit_mask)) {
 						if (req->addresses[k].CDIR == CDIR) {
 							struct in_addr tmp;
 							char ret[23];
@@ -132,8 +132,8 @@ void *listenner(void *data) {
 				port_t port = ntohs(tcp_hdr->th_dport);
 				
 				if (not_in_blacklist(blacklist, ip, tcp_hdr->th_sport) &&
-				   (port == ports_possible[GET_PORT(ip, tcp_hdr->th_sport, key[(time(NULL)/10)%2])]
-				 || port == ports_possible[GET_PORT(ip, tcp_hdr->th_sport, key[(time(NULL)/10-1)%2])])) {
+				   (port == ports_possible[GET_PORT(ntohl(ip), tcp_hdr->th_sport, key[(time(NULL)/10)%2])]
+				 || port == ports_possible[GET_PORT(ntohl(ip), tcp_hdr->th_sport, key[(time(NULL)/10-1)%2])])) {
 					pthread_mutex_lock(&reqlist->mutex);
 					// On tourne sur chaque requete courante, chaque port pour voir si ca correspond et trouver a quel client envoyer
 					uint8_t CDIR = get_biggest_cdir(reqlist, ip, tcp_hdr->th_sport);
