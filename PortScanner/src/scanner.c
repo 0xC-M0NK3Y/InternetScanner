@@ -18,8 +18,7 @@
 
 #include "listenner.h"
 
-#define DEBIT_OpS 1000000
-#define ONE_SECONDE 1000000
+#include "config.h"
 
 static void send_to_ip_mask(SOCKET sock4, request_t *req, port_t *ports_possible, ipv4_t source_ip, SOCKADDRV4 dest_addr4, uint32_t *key, pthread_mutex_t *mutex) {
 	uint32_t index = req->curr_addr;
@@ -136,7 +135,7 @@ static void send_to_ramdom_ip(SOCKET sock4, request_t *req, ipv4_t source_ip, po
 
 void *scanner(void *data) {
 	reqlist_t *reqlist = (reqlist_t *)data;
-	ipv4_t source_ip4 = inet_addr("10.18.205.61");
+	ipv4_t source_ip4 = inet_addr(SOURCE_IP);
 	//ipv6_t source_ip6;
 	uint32_t key[2] = {696969, 262626};
 	SOCKET sock4;
@@ -175,7 +174,7 @@ void *scanner(void *data) {
 	memset(&dest_addr4, 0, sizeof(SOCKADDRV4));
 	//memset(&dest_addr6, 0, sizeof(SOCKADDRV6));
 
-	dest_addr4.sin_addr.s_addr = inet_addr("10.51.0.7");
+	dest_addr4.sin_addr.s_addr = inet_addr(INTERFACE_INTERNET);
 	dest_addr4.sin_family = AF_INET;
 /*
 	inet_pton(AF_INET6, "2a01:cb1d:22c:1b00:7117:5cee:2860:2b42", &source_ip6); // mon ipv6 local wlo1
@@ -195,7 +194,7 @@ void *scanner(void *data) {
 			else if (reqlist->ptr[i].request.scan_count < reqlist->ptr[i].request.seek_count)
 				send_to_ramdom_ip(sock4, &(reqlist->ptr[i].request), source_ip4, ports_possible, key, dest_addr4, &(reqlist->mutex));
 			pthread_mutex_unlock(&reqlist->mutex);
-			usleep(1);
+			usleep(DEBIT_OpS(1000));
 			pthread_mutex_lock(&reqlist->mutex);
 		}
 		pthread_mutex_unlock(&reqlist->mutex);

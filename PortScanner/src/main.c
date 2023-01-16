@@ -119,6 +119,9 @@ int main(int argc, char **argv)
 
 	pthread_mutex_init(&reqlist->mutex, NULL);
 
+	/* Deux thread un scanner (envoi les paquets) et un listenner (recoit les paquets) */
+	/* Le main ecoute les requete et les construit, les threads scanner et listenner se mettent a travailler */
+
 	pthread_create(&scan_thread, NULL, scanner, (void *)reqlist);
 	pthread_create(&listen_thread, NULL, listenner, (void *)reqlist);
 
