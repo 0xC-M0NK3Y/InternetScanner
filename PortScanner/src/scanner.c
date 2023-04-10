@@ -20,7 +20,7 @@
 
 #include "config.h"
 
-static void send_to_ip_mask(SOCKET sock4, request_t *req, port_t *ports_possible, ipv4_t source_ip, SOCKADDRV4 dest_addr4, uint32_t *key, pthread_mutex_t *mutex) {
+static void send_to_ip_mask(SOCKET sock4, request_t *req, const port_t *ports_possible, ipv4_t source_ip, SOCKADDRV4 dest_addr4, uint32_t *key, pthread_mutex_t *mutex) {
 	uint32_t index = req->curr_addr;
 
 	if (req->finished_at != 0)
@@ -28,13 +28,14 @@ static void send_to_ip_mask(SOCKET sock4, request_t *req, port_t *ports_possible
 	if (req->addresses[index].type == 4) {
 		uint32_t bit_mask = ~((1 << (32 - req->addresses[index].CDIR)) - 1);
 		ipv4_t first_ip = ntohl(req->addresses[index].addr.v4);
-		ipv4_t dest_ip = (first_ip & bit_mask) + (req->scan_count / req->port_count);
+		ipv4_t dest_ip =  htonl((first_ip & bit_mask) + (req->scan_count / req->port_count));
 		port_t dest_port = req->seek_port[req->scan_count % req->port_count];
 		port_t source_port = htons(ports_possible[GET_PORT(dest_ip, dest_port, key[(time(NULL)/10)%2])]);
 		packet_t packet;
 
+		dest_addr4.sin_addr.s_addr = dest_ip;
 		dest_addr4.sin_port = dest_port;
-		create_packet4(&packet, source_ip, htonl(dest_ip), dest_port, source_port);
+		create_packet4(&packet, source_ip, dest_ip, dest_port, source_port);
 		pthread_mutex_unlock(mutex);
 		if (sendto(sock4, &packet, sizeof(packet_t), 0, (struct sockaddr *)&dest_addr4, sizeof(SOCKADDRV4)) < 0) {
 			struct in_addr tmp;
@@ -104,7 +105,7 @@ port_t get_random_port(port_t *ports, size_t nb) {
 }
 
 // TODO: rajouter socket pour ipv6 si faisable
-static void send_to_ramdom_ip(SOCKET sock4, request_t *req, ipv4_t source_ip, port_t *ports_possible, uint32_t *key, SOCKADDRV4 dest_addr4, pthread_mutex_t *mutex) {
+static void send_to_ramdom_ip(SOCKET sock4, request_t *req, ipv4_t source_ip, const port_t *ports_possible, uint32_t *key, SOCKADDRV4 dest_addr4, pthread_mutex_t *mutex) {
 	uint32_t index;
 
 	index = get_index(RANDOM() % req->somme_ratio, req);
@@ -114,6 +115,7 @@ static void send_to_ramdom_ip(SOCKET sock4, request_t *req, ipv4_t source_ip, po
 		port_t source_port = htons(ports_possible[GET_PORT(dest_ip, dest_port, key[(time(NULL)/10)%2])]);
 		packet_t packet;
 
+		dest_addr4.sin_addr.s_addr = dest_ip;
 		dest_addr4.sin_port = dest_port;
 		create_packet4(&packet, source_ip, dest_ip, dest_port, source_port);
 		pthread_mutex_unlock(mutex);
@@ -143,9 +145,6 @@ void *scanner(void *data) {
 	SOCKADDRV4 dest_addr4;
 	//SOCKADDRV6 dest_addr6;
 	int dummy = 1;
-	port_t ports_possible[POSSIBLE_PORTS_SIZE] = {1234, 1235, 1236, 1237, 1238, 1239, 2345, 2346, 
-												  2347, 2348, 3456, 3457, 3458, 3459, 4567, 4568};
-   // uint64_t wait_time = ONE_SECONDE / DEBIT_OpS / sizeof(packet_t);
 
 	sock4 = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
 	if (sock4 < 0) {
@@ -174,7 +173,7 @@ void *scanner(void *data) {
 	memset(&dest_addr4, 0, sizeof(SOCKADDRV4));
 	//memset(&dest_addr6, 0, sizeof(SOCKADDRV6));
 
-	dest_addr4.sin_addr.s_addr = inet_addr(INTERFACE_INTERNET);
+	//dest_addr4.sin_addr.s_addr = inet_addr(INTERFACE_INTERNET);
 	dest_addr4.sin_family = AF_INET;
 /*
 	inet_pton(AF_INET6, "2a01:cb1d:22c:1b00:7117:5cee:2860:2b42", &source_ip6); // mon ipv6 local wlo1
@@ -194,7 +193,7 @@ void *scanner(void *data) {
 			else if (reqlist->ptr[i].request.scan_count < reqlist->ptr[i].request.seek_count)
 				send_to_ramdom_ip(sock4, &(reqlist->ptr[i].request), source_ip4, ports_possible, key, dest_addr4, &(reqlist->mutex));
 			pthread_mutex_unlock(&reqlist->mutex);
-			usleep(DEBIT_OpS(1000));
+			usleep(DEBIT_OpS(3000000000));
 			pthread_mutex_lock(&reqlist->mutex);
 		}
 		pthread_mutex_unlock(&reqlist->mutex);

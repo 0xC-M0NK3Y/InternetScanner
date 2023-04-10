@@ -1,13 +1,11 @@
 #ifndef CONFIG_H
 # define CONFIG_H
 
-#include "packet.h"
+#include "defines.h"
 
-#define INTERFACE_INTERNET "8.8.8.8"
 #define SOURCE_IP "192.168.1.27"
 
-#define ONE_SECONDE 1000000
-
-#define DEBIT_OpS(DEBIT) (ONE_SECONDE/DEBIT/(sizeof(packet_t)))
+const port_t ports_possible[POSSIBLE_PORTS_SIZE] = {1111, 2222, 3333, 4444, 5555, 6666, 7777, 8888, 
+                                                    9999, 1212, 1313, 1414, 1515, 1616, 1717, 1818};
 
 #endif

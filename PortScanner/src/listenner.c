@@ -18,6 +18,8 @@
 #include "packet.h"
 #include "utils.h"
 
+extern const port_t ports_possible[POSSIBLE_PORTS_SIZE];
+
 #define BLACKLIST_SIZE 50
 
 int not_in_blacklist(blacklist_t *blacklist, ipv4_t ip, port_t port) {
@@ -99,9 +101,6 @@ void *listenner(void *data) {
 	uint8_t buffer[5000];
 	IP_HEADER *ip_hdr;
 	TCP_HEADER *tcp_hdr;
-	port_t ports_possible[POSSIBLE_PORTS_SIZE] = {1234, 1235, 1236, 1237, 1238, 1239, 2345, 2346, 
-												  2347, 2348, 3456, 3457, 3458, 3459, 4567, 4568};
-	//port_t ports_possible[POSSIBLE_PORTS_SIZE] = {6969};
 	uint32_t key[2] = {696969, 262626};
 	int r;
 	blacklist_t blacklist[BLACKLIST_SIZE];
