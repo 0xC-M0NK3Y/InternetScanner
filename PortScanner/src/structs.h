@@ -34,7 +34,6 @@ typedef struct request {
 	size_t				port_count;
 	uint32_t			somme_ratio;
 
-
 	/* si on scan toutes les IPs, faut choisir un temps d'attente
 	 * pour recevoir les réponses des scans sur les dernières IPs
 	 * donc faut stocker le moment de l'envoie du dernier paquet pour ça
@@ -43,15 +42,15 @@ typedef struct request {
 } request_t;
 
 typedef struct communicator {
-	request_t request;
-	SOCKET	  client;
+	request_t		request;
+	socket_t		client;
 } communicator_t;
 
 typedef struct request_list {
-	pthread_mutex_t mutex;
-	communicator_t *ptr;
-	volatile size_t len;
-	size_t cap;
+	communicator_t		*ptr;
+	volatile size_t		len;
+	size_t				cap;
+	pthread_mutex_t		mutex;
 }	reqlist_t;
 
 typedef struct blacklist {

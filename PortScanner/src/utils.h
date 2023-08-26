@@ -9,4 +9,5 @@ unsigned short in_cksum(unsigned short *addr, int len);
 int is_possible_port(port_t port, port_t *ports, int size);
 int parse_arg(char *arg, analyse_t *reader);
 int create_ratio(request_t *req);
+void remove_from_reqlist(reqlist_t *req, int index);
 #endif

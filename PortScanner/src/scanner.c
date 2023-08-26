@@ -20,24 +20,30 @@
 
 #include "config.h"
 
-static void send_to_ip_mask(SOCKET sock4, request_t *req, const port_t *ports_possible, ipv4_t source_ip, SOCKADDRV4 dest_addr4, uint32_t *key, pthread_mutex_t *mutex) {
+static void send_to_ip_mask(socket_t sock4, request_t *req, const port_t *ports_possible, ipv4_t source_ip, sockaddr_in4_t dest_addr4, uint32_t *key, pthread_mutex_t *mutex) {
 	uint32_t index = req->curr_addr;
 
 	if (req->finished_at != 0)
 		return;
 	if (req->addresses[index].type == 4) {
-		uint32_t bit_mask = ~((1 << (32 - req->addresses[index].CDIR)) - 1);
-		ipv4_t first_ip = ntohl(req->addresses[index].addr.v4);
-		ipv4_t dest_ip =  htonl((first_ip & bit_mask) + (req->scan_count / req->port_count));
-		port_t dest_port = req->seek_port[req->scan_count % req->port_count];
-		port_t source_port = htons(ports_possible[GET_PORT(dest_ip, dest_port, key[(time(NULL)/10)%2])]);
-		packet_t packet;
+		uint32_t	bit_mask = ~((1 << (32 - req->addresses[index].CDIR)) - 1);
+		ipv4_t		first_ip = ntohl(req->addresses[index].addr.v4);
+		ipv4_t		dest_ip =  htonl((first_ip & bit_mask) + (req->scan_count / req->port_count));
+		port_t		dest_port = req->seek_port[req->scan_count % req->port_count];
+		port_t		source_port = htons(ports_possible[GET_PORT(dest_ip, dest_port, key[(time(NULL)/10)%2])]);
+		packet_t	packet;
+
+		{
+			struct in_addr tmp;
+			tmp.s_addr = dest_ip;
+			printf("[MASK] send %s:%d\n", inet_ntoa(tmp), ntohs(dest_port));
+		}
 
 		dest_addr4.sin_addr.s_addr = dest_ip;
 		dest_addr4.sin_port = dest_port;
 		create_packet4(&packet, source_ip, dest_ip, dest_port, source_port);
 		pthread_mutex_unlock(mutex);
-		if (sendto(sock4, &packet, sizeof(packet_t), 0, (struct sockaddr *)&dest_addr4, sizeof(SOCKADDRV4)) < 0) {
+		if (sendto(sock4, &packet, sizeof(packet_t), 0, (struct sockaddr *)&dest_addr4, sizeof(sockaddr_in4_t)) < 0) {
 			struct in_addr tmp;
 			tmp.s_addr = dest_ip;
 			perror("sendto");
@@ -52,14 +58,14 @@ static void send_to_ip_mask(SOCKET sock4, request_t *req, const port_t *ports_po
 		if (req->curr_addr == req->addr_count)
 			req->finished_at = time(NULL);
 	} else if (req->addresses[index].type == 6) {
-
+		// TODO: ipv6
 	} else {
 		// ERREUR inconnue
 		// impossible de rentrer ivi en theorie
 	}
 }
 
-uint32_t get_index(uint32_t rand, request_t *req) {
+static uint32_t get_index(uint32_t rand, request_t *req) {
 	for (size_t i = 0; i < req->addr_count; i++) {
 		if (rand - req->addresses[i].ratio <= 0)
 			return i;
@@ -67,12 +73,12 @@ uint32_t get_index(uint32_t rand, request_t *req) {
 	return req->addr_count - 1;
 }
 
-ipv4_t get_random_ipv4(ipv4_t addr, uint8_t mask) {
+static ipv4_t get_random_ipv4(ipv4_t addr, uint8_t mask) {
 	uint32_t bit_mask = ~((1 << (32 - mask)) - 1);
-	ipv4_t ip = addr & (bit_mask >> (32 - mask)); 
+	ipv4_t ip = ntohl(addr) & (bit_mask >> (32 - mask));
 	uint64_t rand = RANDOM() % (uint64_t)((uint64_t) 1 << (32 - mask));
 
-	ip = ntohl(ip);
+	//ip = ntohl(ip);
 	ip += (uint32_t)rand;
 	ip = htonl(ip);
 
@@ -99,27 +105,34 @@ ipv6_t get_random_ipv6(ipv6_t addr, uint8_t mask) {
 	return ip;
 }
 
-port_t get_random_port(port_t *ports, size_t nb) {
+static port_t get_random_port(port_t *ports, size_t nb) {
 	uint32_t rand = RANDOM() % nb;
 	return *(ports + rand);
 }
 
 // TODO: rajouter socket pour ipv6 si faisable
-static void send_to_ramdom_ip(SOCKET sock4, request_t *req, ipv4_t source_ip, const port_t *ports_possible, uint32_t *key, SOCKADDRV4 dest_addr4, pthread_mutex_t *mutex) {
+static void send_to_ramdom_ip(socket_t sock4, request_t *req, ipv4_t source_ip, const port_t *ports_possible, uint32_t *key, sockaddr_in4_t dest_addr4, pthread_mutex_t *mutex) {
 	uint32_t index;
 
 	index = get_index(RANDOM() % req->somme_ratio, req);
 	if (req->addresses[index].type == 4) {
-		ipv4_t dest_ip = get_random_ipv4(req->addresses[index].addr.v4, req->addresses[index].CDIR);
-		port_t dest_port = get_random_port(req->seek_port, req->port_count);
-		port_t source_port = htons(ports_possible[GET_PORT(dest_ip, dest_port, key[(time(NULL)/10)%2])]);
-		packet_t packet;
+		ipv4_t		dest_ip = get_random_ipv4(req->addresses[index].addr.v4, req->addresses[index].CDIR);
+		port_t		dest_port = get_random_port(req->seek_port, req->port_count);
+		port_t		source_port = htons(ports_possible[GET_PORT(dest_ip, dest_port, key[(time(NULL)/10)%2])]);
+		packet_t	packet;
 
 		dest_addr4.sin_addr.s_addr = dest_ip;
 		dest_addr4.sin_port = dest_port;
 		create_packet4(&packet, source_ip, dest_ip, dest_port, source_port);
+
+		{
+			struct in_addr tmp;
+			tmp.s_addr = dest_ip;
+			printf("[RAND] send %s:%d\n", inet_ntoa(tmp), ntohs(dest_port));
+		}
+
 		pthread_mutex_unlock(mutex);
-		if (sendto(sock4, &packet, sizeof(packet_t), 0, (struct sockaddr *)&dest_addr4, sizeof(SOCKADDRV4)) < 0) {
+		if (sendto(sock4, &packet, sizeof(packet_t), 0, (struct sockaddr *)&dest_addr4, sizeof(sockaddr_in4_t)) < 0) {
 			struct in_addr tmp;
 			tmp.s_addr = dest_ip;
 			perror("sendto");
@@ -136,42 +149,35 @@ static void send_to_ramdom_ip(SOCKET sock4, request_t *req, ipv4_t source_ip, co
 }
 
 void *scanner(void *data) {
-	reqlist_t *reqlist = (reqlist_t *)data;
-	ipv4_t source_ip4 = inet_addr(SOURCE_IP);
-	//ipv6_t source_ip6;
-	uint32_t key[2] = {696969, 262626};
-	SOCKET sock4;
-	//SOCKET sock6;
-	SOCKADDRV4 dest_addr4;
-	//SOCKADDRV6 dest_addr6;
-	int dummy = 1;
+	reqlist_t			*reqlist = (reqlist_t *)data;
+	ipv4_t				source_ip4 = inet_addr(SOURCE_IP);
+	//ipv6_t			source_ip6;
+	uint32_t			key[2] = {696969, 262626};
+	socket_t			sock4;
+	//socket_t			sock6;
+	sockaddr_in4_t		dest_addr4;
+	//sockaddr_in6_t	dest_addr6;
+	int					dummy = 1;
 
 	sock4 = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
-	if (sock4 < 0) {
-		perror("socket");
-		return NULL;
-	}
+	if (sock4 < 0)
+		return perror("socket"), NULL;
 /*
 	sock6 = socket(AF_INET6, SOCK_RAW, IPPROTO_TCP);
-	if (sock6 < 0) {
-		perror("socket");
-		return NULL;
-	}
+	if (sock6 < 0)
+		return perror("socket"), NULL;
 */
+
 	// Header deja fait
 	//  changer les option de la socket (kernel y touche pas)
-	if (setsockopt(sock4, IPPROTO_IP, IP_HDRINCL, &dummy, sizeof(dummy)) < 0) {
-		perror("setsockopt");
-		return NULL;
-	}
+	if (setsockopt(sock4, IPPROTO_IP, IP_HDRINCL, &dummy, sizeof(dummy)) < 0)
+		return perror("setsockopt"), NULL;
 /*
-	if (setsockopt(sock6, IPPROTO_IPV6, IPV6_HDRINCL, &dummy, sizeof(dummy)) < 0) {
-		perror("setsockopt");
-		return NULL;
-	}
+	if (setsockopt(sock6, IPPROTO_IPV6, IPV6_HDRINCL, &dummy, sizeof(dummy)) < 0)
+		return perror("setsockopt"), NULL;
 */
-	memset(&dest_addr4, 0, sizeof(SOCKADDRV4));
-	//memset(&dest_addr6, 0, sizeof(SOCKADDRV6));
+	memset(&dest_addr4, 0, sizeof(sockaddr_in4_t));
+	//memset(&dest_addr6, 0, sizeof(sockaddr_in6_t));
 
 	//dest_addr4.sin_addr.s_addr = inet_addr(INTERFACE_INTERNET);
 	dest_addr4.sin_family = AF_INET;

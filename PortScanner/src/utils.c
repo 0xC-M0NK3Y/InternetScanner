@@ -151,7 +151,7 @@ int create_ratio(request_t *req) {
 	uint128_t *tmp_ratio;
 	uint64_t  *tmp_ptr = malloc(req->addr_count * sizeof(uint64_t) * 2);
 	if (tmp_ptr == NULL)
-		return -__LINE__;
+		return CRITICAL_ERROR;
 	tmp_ratio = (uint128_t *)tmp_ptr;
 
 	// On stock le nombre de possibilité de chaque target, mask
@@ -205,3 +205,7 @@ int create_ratio(request_t *req) {
 	return 1;
 }
 
+void remove_from_reqlist(reqlist_t *reqlist, int index) {
+	memmove(&reqlist->ptr[index], &reqlist->ptr[index+1], (reqlist->len-index) * sizeof(*reqlist->ptr));
+	reqlist->len--;
+}
