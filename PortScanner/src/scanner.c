@@ -33,12 +33,6 @@ static void send_to_ip_mask(socket_t sock4, request_t *req, const port_t *ports_
 		port_t		source_port = htons(ports_possible[GET_PORT(dest_ip, dest_port, key[(time(NULL)/10)%2])]);
 		packet_t	packet;
 
-		{
-			struct in_addr tmp;
-			tmp.s_addr = dest_ip;
-			printf("[MASK] send %s:%d\n", inet_ntoa(tmp), ntohs(dest_port));
-		}
-
 		dest_addr4.sin_addr.s_addr = dest_ip;
 		dest_addr4.sin_port = dest_port;
 		create_packet4(&packet, source_ip, dest_ip, dest_port, source_port);
@@ -74,22 +68,24 @@ static uint32_t get_index(uint32_t rand, request_t *req) {
 }
 
 static ipv4_t get_random_ipv4(ipv4_t addr, uint8_t mask) {
-	uint32_t bit_mask = ~((1 << (32 - mask)) - 1);
-	ipv4_t ip = ntohl(addr) & (bit_mask >> (32 - mask));
-	uint64_t rand = RANDOM() % (uint64_t)((uint64_t) 1 << (32 - mask));
+	uint32_t	bit_mask = ~((1 << (32 - mask)) - 1);
+	ipv4_t		ip = addr & (bit_mask >> (32 - mask));
+	uint64_t	rand = RANDOM() % (uint64_t)((uint64_t) 1 << (32 - mask));
 
-	//ip = ntohl(ip);
+	ip = ntohl(ip);
 	ip += (uint32_t)rand;
 	ip = htonl(ip);
+	if (*((char *)&ip) == 0)
+		*((char *)&ip) = 1;
 
 	return ip;
 }
 
 ipv6_t get_random_ipv6(ipv6_t addr, uint8_t mask) {
-	uint128_t bit_mask = ~((1 << (128 - mask)) - 1);
-	ipv6_t ip;
-	uint128_t rand = RANDOM();
-	ipv6_t tmp;
+	uint128_t	bit_mask = ~((1 << (128 - mask)) - 1);
+	ipv6_t		ip;
+	uint128_t	rand = RANDOM();
+	ipv6_t		tmp;
 
 	rand |= RANDOM() << 63;
 	rand = rand % (uint128_t)((uint128_t) 1 << (128 - mask));
@@ -124,12 +120,6 @@ static void send_to_ramdom_ip(socket_t sock4, request_t *req, ipv4_t source_ip, 
 		dest_addr4.sin_addr.s_addr = dest_ip;
 		dest_addr4.sin_port = dest_port;
 		create_packet4(&packet, source_ip, dest_ip, dest_port, source_port);
-
-		{
-			struct in_addr tmp;
-			tmp.s_addr = dest_ip;
-			printf("[RAND] send %s:%d\n", inet_ntoa(tmp), ntohs(dest_port));
-		}
 
 		pthread_mutex_unlock(mutex);
 		if (sendto(sock4, &packet, sizeof(packet_t), 0, (struct sockaddr *)&dest_addr4, sizeof(sockaddr_in4_t)) < 0) {
