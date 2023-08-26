@@ -28,7 +28,7 @@ void *check_ip(void *data) {
     init_string(&txt);
     memset(first_ip, 0, 23);
     memcpy(first_ip, "http://", 7);
-    memcpy(first_ip + 7, ip, strchr(ip, ':') - ip);
+    memcpy(first_ip + 7, ip, strchr(ip, '\n') - ip);
 
     curl_easy_setopt(curl, CURLOPT_URL, first_ip);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
