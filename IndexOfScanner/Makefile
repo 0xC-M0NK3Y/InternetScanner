@@ -1,19 +1,22 @@
-NAME = IndexOfScanner
+NAME = bin/IndexOfScanner
+
 CC = gcc
 CFLAGS = -Wall -Wextra -Werror -lcurl -lpthread -g
-SRC = $(addprefix src/, main.c port_scanner_api.c utils.c)
-OBJ = ${SRC:.c=.o}
+
+SRC = $(wildcard src/*.c) $(wildcard src/*/*.c) $(wildcard src/*/*/*.c)
+OBJ = $(addprefix build/, ${SRC:.c=.o})
 
 all : ${NAME}
 
 ${NAME}: ${OBJ}
 		${CC} ${OBJ} ${CFLAGS} -o ${NAME}
 
-%.o: %.c
-		${CC} -c ${<} -o ${@} ${CFLAGS}
+build/%.o: %.c
+		mkdir -p $(shell dirname $@)
+		${CC} -c $< -o $@ ${CFLAGS}
 
 clean:
-		rm -rf ${OBJ}
+		rm -rf build/*
 
 fclean: clean
 		rm -rf ${NAME}
