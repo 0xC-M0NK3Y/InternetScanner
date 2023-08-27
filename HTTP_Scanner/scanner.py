@@ -4,6 +4,7 @@ from asyncio import Queue
 from resource import RLIMIT_NOFILE, getrlimit
 import aiohttp
 from scanners import scanners
+import time
 import sys
 import uuid
 import os
@@ -30,7 +31,7 @@ async def scan(queue, fp, dirn):
 			print(f'{target}:{ret}', file=fp)
 		queue.task_done()
 
-async def fetcher(queue):
+async def fetcher(queue, fp):
 	while True:
 		reader, writer = await asyncio.open_connection(*PORT_SCAN_ADDR)
 		print("Connected")
@@ -43,7 +44,7 @@ async def fetcher(queue):
 				break
 		print('Close the connection')
 		writer.close()
-		if int(time.time) % 15*60 == 0:
+		if int(time.time()) % 15*60 == 0:
 			fp.flush()
 		await writer.wait_closed()
 		while not queue.empty():
